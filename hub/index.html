@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPC Poker Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1f2e;
+      --surface2: #242b3d;
+      --border:   #2e3650;
+      --text:     #e8eaf0;
+      --muted:    #7a8299;
+      --accent:   #4f7ef8;
+    }
+
+    html, body {
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 48px;
+      text-align: center;
+    }
+    .logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* App grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 580px;
+    }
+
+    /* App card */
+    .app-card {
+      display: block;
+      text-decoration: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      transition: border-color 0.15s, background 0.15s, transform 0.15s;
+      cursor: pointer;
+    }
+    .app-card:hover {
+      border-color: var(--accent);
+      background: var(--surface2);
+      transform: translateY(-2px);
+    }
+    .app-card:active { transform: translateY(0); }
+
+    .app-icon {
+      font-size: 2.2rem;
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+    .app-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .app-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: 18px;
+    }
+    .app-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .app-cta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .app-cta span {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .arrow {
+      font-size: 1.1rem;
+      color: var(--accent);
+      transition: transform 0.15s;
+    }
+    .app-card:hover .arrow { transform: translateX(4px); }
+
+    /* Footer */
+    .footer {
+      margin-top: 48px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .title { font-size: 1.25rem; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <div class="header">
+      <img src="logo-ppc.jpg" alt="PPC" class="logo" />
+      <div>
+        <h1 class="title">Poker Tools</h1>
+        <p class="subtitle">Penthièvre Poker Club · NLHE</p>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <a href="/editor/" class="app-card">
+        <div class="app-icon">✏️</div>
+        <div class="app-name">Range Editor</div>
+        <p class="app-desc">
+          Créez et organisez vos ranges pré-flop. Définissez des palettes de couleurs, des fréquences, et exportez en PDF ou JSON.
+        </p>
+        <div class="app-tags">
+          <span class="tag">Ranges</span>
+          <span class="tag">Collections</span>
+          <span class="tag">Export PDF</span>
+        </div>
+        <div class="app-cta">
+          <span>Ouvrir l'éditeur</span>
+          <span class="arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/trainer/" class="app-card">
+        <div class="app-icon">🎯</div>
+        <div class="app-name">Poker Trainer</div>
+        <p class="app-desc">
+          Entraînez-vous sur vos propres ranges. Choisissez les scénarios, la proximité des mains, et suivez votre progression.
+        </p>
+        <div class="app-tags">
+          <span class="tag">Entraînement</span>
+          <span class="tag">Diagnostic</span>
+          <span class="tag">Statistiques</span>
+        </div>
+        <div class="app-cta">
+          <span>Ouvrir le trainer</span>
+          <span class="arrow">→</span>
+        </div>
+      </a>
+
+    </div>
+
+    <p class="footer">Les ranges créées dans l'éditeur sont disponibles directement dans le trainer.</p>
+
+  </div>
+</body>
+</html>

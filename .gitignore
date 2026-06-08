@@ -1,0 +1,8 @@
+node_modules/
+dist/
+range-editor/node_modules/
+range-editor/dist/
+poker-trainer/node_modules/
+poker-trainer/dist/
+.DS_Store
+*.local
