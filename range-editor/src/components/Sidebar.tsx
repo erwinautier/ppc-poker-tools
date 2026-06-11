@@ -1,6 +1,6 @@
 import type { AppState, Range } from '../types';
 import { newRange, newCollection } from '../store';
-import { Plus, FolderPlus, Trash2, ChevronRight, ChevronDown, FolderOpen } from 'lucide-react';
+import { Plus, FolderPlus, Trash2, ChevronRight, ChevronDown, FolderOpen, Copy } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -18,6 +18,21 @@ export default function Sidebar({ state, selectedRangeId, onSelectRange, onState
     const r = newRange();
     onStateChange({ ...state, ranges: [...state.ranges, r] });
     onSelectRange(r.id);
+  };
+
+  const duplicateRange = (r: Range) => {
+    const copy: Range = {
+      ...r,
+      id: crypto.randomUUID(),
+      title: `Copie de ${r.title}`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const idx = state.ranges.findIndex(x => x.id === r.id);
+    const ranges = [...state.ranges];
+    ranges.splice(idx + 1, 0, copy);
+    onStateChange({ ...state, ranges });
+    onSelectRange(copy.id);
   };
 
   const deleteRange = (id: string) => {
@@ -97,6 +112,13 @@ export default function Sidebar({ state, selectedRangeId, onSelectRange, onState
             onClick={e => { e.stopPropagation(); removeRangeFromCollection(collectionId, r.id); }}
           >×</button>
         )}
+        <button
+          className="btn-icon"
+          title="Dupliquer"
+          onClick={e => { e.stopPropagation(); duplicateRange(r); }}
+        >
+          <Copy size={12} />
+        </button>
         <button
           className="btn-icon danger"
           title="Supprimer"
