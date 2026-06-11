@@ -134,6 +134,24 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', system-u
 }
 .sidebar-range:hover .range-actions { display: flex; }
 
+/* ── Mobile : boutons toujours visibles ── */
+@media (hover: none) {
+  .range-actions {
+    display: flex;
+  }
+  .sidebar-range {
+    padding: 10px 80px 10px 10px; /* espace à droite pour les boutons */
+    min-height: 52px;
+  }
+  .range-title-text { font-size: 14px; }
+  .range-meta { font-size: 12px; }
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+  }
+}
+
 .collection { margin-bottom: 4px; }
 
 .collection-header {

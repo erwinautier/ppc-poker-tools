@@ -36,6 +36,8 @@ export default function Sidebar({ state, selectedRangeId, onSelectRange, onState
   };
 
   const deleteRange = (id: string) => {
+    const range = state.ranges.find(r => r.id === id);
+    if (!confirm(`Supprimer la range "${range?.title ?? ''}" ? Cette action est irréversible.`)) return;
     onStateChange({
       ...state,
       ranges: state.ranges.filter(r => r.id !== id),
