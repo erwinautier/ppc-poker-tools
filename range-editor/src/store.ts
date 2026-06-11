@@ -27,12 +27,13 @@ export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-export function exportStateJSON(state: AppState): void {
+export function exportStateJSON(state: AppState, username?: string): void {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ranges-${Date.now()}.json`;
+  const date = new Date().toISOString().slice(0, 10);
+  a.download = username ? `${username}-ranges-${date}.json` : `ranges-${date}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

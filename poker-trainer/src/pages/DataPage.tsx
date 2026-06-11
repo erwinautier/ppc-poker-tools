@@ -4,7 +4,7 @@ import { importREStateFromJSON, type REState } from '../engine/rangeEditorBridge
 
 const RE_STORAGE_KEY = 'range-editor-v1';
 
-export default function DataPage() {
+export default function DataPage({ username }: { username?: string }) {
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const fileRefRE   = useRef<HTMLInputElement>(null);
   const fileRefStats = useRef<HTMLInputElement>(null);
@@ -37,7 +37,8 @@ export default function DataPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `trainer-stats-${Date.now()}.json`;
+    const date = new Date().toISOString().slice(0, 10);
+    a.download = username ? `${username}-stats-${date}.json` : `trainer-stats-${date}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }

@@ -11,6 +11,7 @@ import {
 } from '../engine/reStats';
 import { pickHandForRange, type ProximityMode } from '../engine/reHandPicker';
 import { handKeyToCards } from '../engine/smartTrainer';
+import { useSyncContext } from '../lib/SyncContext';
 
 // ── Proximity config ──────────────────────────────────────────────────────────
 
@@ -522,6 +523,7 @@ function TrainingSession({
   proximity: ProximityMode;
   onEnd: () => void;
 }) {
+  const { scheduleSync } = useSyncContext();
   const ranges = state.ranges.filter(r => rangeIds.includes(r.id));
   const [phase, setPhase]   = useState<Phase>('question');
   const [hand, setHand]     = useState<SessionHand | null>(null);
@@ -551,6 +553,7 @@ function TrainingSession({
     if (phase !== 'question') return;
     const isCorrect = inRange ? validColorIds.includes(colorId) : colorId === 'fold';
     onStats(recordREAttempt(stats, range.id, handKey, isCorrect));
+    scheduleSync();
     setAnswered(colorId);
     setAttempts(a => a + 1);
     if (isCorrect) setCorrect(c => c + 1);
