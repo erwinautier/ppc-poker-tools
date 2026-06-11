@@ -3,6 +3,11 @@ import './App.css';
 import ReTrainerPage from './pages/ReTrainerPage';
 import StatsPage     from './pages/StatsPage';
 import DataPage      from './pages/DataPage';
+import { AuthGate, useAuthContext } from './lib/AuthGate';
+import { useAuth } from './lib/useAuth';
+import { useCloudSync } from './lib/useCloudSync';
+import { SyncProvider } from './lib/SyncContext';
+import { LogOut } from 'lucide-react';
 
 // ── Font size ─────────────────────────────────────────────────────────────────
 
@@ -23,9 +28,27 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'data',  icon: '↕️', label: 'Données'      },
 ];
 
-// ── App ───────────────────────────────────────────────────────────────────────
+// ── Save indicator ─────────────────────────────────────────────────────────────
 
-export default function App() {
+function SyncBadge({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
+  if (status === 'idle') return null;
+  const map = {
+    saving: { label: 'Sauvegarde…', color: 'var(--text-muted)' },
+    saved:  { label: '✓ Sauvegardé', color: '#4ade80' },
+    error:  { label: '⚠ Erreur sync', color: '#f87171' },
+  } as const;
+  const { label, color } = map[status];
+  return <span style={{ fontSize: '0.7rem', color }}>{label}</span>;
+}
+
+// ── Inner App ─────────────────────────────────────────────────────────────────
+
+function AppInner() {
+  const { username, signOut } = useAuthContext();
+  const { state: authState } = useAuth();
+  const userId = authState.status === 'authenticated' ? authState.user.id : null;
+  const { status: syncStatus, scheduleSync } = useCloudSync(userId);
+
   const [tab, setTab]         = useState<Tab>('train');
   const [fontSize, setFontSize] = useState<FontSize>(loadFontSize);
 
@@ -41,6 +64,7 @@ export default function App() {
   const fontSizePx = { sm: 11, md: 14, lg: 17 }[fontSize];
 
   return (
+    <SyncProvider scheduleSync={scheduleSync}>
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
 
       {/* ── Header ── */}
@@ -60,6 +84,9 @@ export default function App() {
           </div>
         </a>
 
+        {/* Sync badge */}
+        <SyncBadge status={syncStatus} />
+
         {/* Font size toggle */}
         <button
           onClick={cycleFontSize}
@@ -75,6 +102,21 @@ export default function App() {
             {fontSize === 'sm' ? '↑' : fontSize === 'md' ? '↕' : '↓'}
           </span>
         </button>
+
+        {/* User / logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{username}</span>
+          <button
+            title="Se déconnecter" onClick={signOut}
+            style={{
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: 'var(--text-muted)',
+              display: 'flex', alignItems: 'center',
+            }}
+          >
+            <LogOut size={14} />
+          </button>
+        </div>
       </header>
 
       {/* ── Content ── */}
@@ -85,7 +127,7 @@ export default function App() {
       }}>
         {tab === 'train' && <ReTrainerPage />}
         {tab === 'stats' && <StatsPage />}
-        {tab === 'data'  && <DataPage />}
+        {tab === 'data'  && <DataPage username={username} />}
       </main>
 
       {/* ── Bottom nav ── */}
@@ -116,5 +158,14 @@ export default function App() {
         ))}
       </nav>
     </div>
+    </SyncProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthGate>
+      <AppInner />
+    </AuthGate>
   );
 }

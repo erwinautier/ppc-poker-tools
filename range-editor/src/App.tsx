@@ -7,7 +7,10 @@ import HandMatrix from './components/HandMatrix';
 import PaletteEditor from './components/PaletteEditor';
 import RangeSettings from './components/RangeSettings';
 import RangeStats from './components/RangeStats';
-import { Download, FileDown, Upload, Eraser, Menu, X } from 'lucide-react';
+import { Download, FileDown, Upload, Eraser, Menu, X, LogOut } from 'lucide-react';
+import { AuthGate, useAuthContext } from './lib/AuthGate';
+import { useCloudSync } from './lib/useCloudSync';
+import { useAuth } from './lib/useAuth';
 import './App.css';
 
 type MatrixFont = 'sm' | 'md' | 'lg';
@@ -16,7 +19,27 @@ function loadFont(): MatrixFont {
   return (localStorage.getItem('matrix-font') as MatrixFont) ?? 'md';
 }
 
-export default function App() {
+// ── Save indicator ────────────────────────────────────────────────────────────
+function SyncBadge({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
+  if (status === 'idle') return null;
+  const map = {
+    saving: { label: 'Sauvegarde…', color: '#7a8299' },
+    saved:  { label: '✓ Sauvegardé', color: '#4ade80' },
+    error:  { label: '⚠ Erreur sync', color: '#f87171' },
+  } as const;
+  const { label, color } = map[status];
+  return (
+    <span style={{ fontSize: '0.75rem', color, transition: 'color 0.3s' }}>{label}</span>
+  );
+}
+
+// ── Inner app (requires auth context) ────────────────────────────────────────
+function AppInner() {
+  const { username, signOut } = useAuthContext();
+  const { state: authState } = useAuth();
+  const userId = authState.status === 'authenticated' ? authState.user.id : null;
+  const { scheduleSync, status: syncStatus, loaded } = useCloudSync(userId);
+
   const [state, setState] = useState<AppState>(loadState);
   const [selectedRangeId, setSelectedRangeId] = useState<string | null>(
     () => loadState().ranges[0]?.id ?? null
@@ -26,7 +49,20 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [matrixFont, setMatrixFont] = useState<MatrixFont>(loadFont);
 
-  useEffect(() => { saveState(state); }, [state]);
+  // Re-read state from localStorage once cloud data has loaded
+  useEffect(() => {
+    if (!loaded) return;
+    const fresh = loadState();
+    setState(fresh);
+    setSelectedRangeId(fresh.ranges[0]?.id ?? null);
+  }, [loaded]);
+
+  // Save to localStorage + schedule cloud sync on every state change
+  useEffect(() => {
+    if (!loaded) return;
+    saveState(state);
+    scheduleSync();
+  }, [state, loaded, scheduleSync]);
 
   const handleFontChange = (f: MatrixFont) => {
     setMatrixFont(f);
@@ -47,18 +83,14 @@ export default function App() {
 
   const handleSelectRange = (id: string) => {
     setSelectedRangeId(id);
-    setSidebarOpen(false); // ferme le sidebar sur mobile après sélection
+    setSidebarOpen(false);
     const r = state.ranges.find(r => r.id === id);
-    if (r && r.palette.length > 0) {
-      setActiveColorId(r.palette[0].id);
-    }
+    if (r && r.palette.length > 0) setActiveColorId(r.palette[0].id);
   };
 
   const clearRange = () => {
     if (!selectedRange) return;
-    if (confirm('Effacer toutes les mains de cette range ?')) {
-      updateRange({ hands: {} });
-    }
+    if (confirm('Effacer toutes les mains de cette range ?')) updateRange({ hands: {} });
   };
 
   const handleImport = () => {
@@ -98,7 +130,8 @@ export default function App() {
             <span className="header-title">Range Editor</span>
           </a>
         </div>
-        {/* Sélecteur de taille de police */}
+
+        {/* Font size selector */}
         <div className="font-size-selector" title="Taille du texte dans la matrice">
           {(['sm', 'md', 'lg'] as MatrixFont[]).map((f, i) => (
             <button
@@ -107,17 +140,18 @@ export default function App() {
               onClick={() => handleFontChange(f)}
               title={f === 'sm' ? 'Petit' : f === 'md' ? 'Moyen' : 'Grand'}
               style={{ fontSize: `${11 + i * 3}px` }}
-            >
-              A
-            </button>
+            >A</button>
           ))}
         </div>
+
+        {/* Sync badge */}
+        <SyncBadge status={syncStatus} />
 
         <div className="header-actions">
           <button className="btn" onClick={handleImport}>
             <Upload size={15} /><span className="btn-label"> Importer</span>
           </button>
-          <button className="btn" onClick={() => exportStateJSON(state)}>
+          <button className="btn" onClick={() => exportStateJSON(state, username)}>
             <Download size={15} /><span className="btn-label"> JSON</span>
           </button>
           {selectedRange && (
@@ -125,10 +159,16 @@ export default function App() {
               <FileDown size={15} /><span className="btn-label"> PDF</span>
             </button>
           )}
+          {/* User / logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{username}</span>
+            <button className="btn" title="Se déconnecter" onClick={signOut}>
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Overlay mobile pour fermer le sidebar */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <div className="app-body">
@@ -143,7 +183,6 @@ export default function App() {
         {selectedRange ? (
           <main className="main-content">
             <RangeSettings range={selectedRange} onChange={updateRange} />
-
             <div className="editor-area">
               <div className="matrix-wrapper">
                 <HandMatrix
@@ -157,14 +196,10 @@ export default function App() {
                 <button className="btn-clear" onClick={clearRange}>
                   <Eraser size={14} /> Tout effacer
                 </button>
-
-                {/* Zone de notes */}
                 <div className="notes-wrapper">
                   <label className="notes-label">
                     Remarques
-                    <span className="notes-count">
-                      {(selectedRange.notes ?? '').length}/500
-                    </span>
+                    <span className="notes-count">{(selectedRange.notes ?? '').length}/500</span>
                   </label>
                   <textarea
                     className="notes-textarea"
@@ -176,7 +211,6 @@ export default function App() {
                   />
                 </div>
               </div>
-
               <div className="right-panel">
                 <PaletteEditor
                   palette={selectedRange.palette}
@@ -207,5 +241,13 @@ export default function App() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthGate>
+      <AppInner />
+    </AuthGate>
   );
 }
