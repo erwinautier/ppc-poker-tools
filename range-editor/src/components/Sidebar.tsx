@@ -55,7 +55,34 @@ export default function Sidebar({ state, selectedRangeId, onSelectRange, onState
   };
 
   const deleteCollection = (id: string) => {
+    if (!confirm('Supprimer ce dossier ? Les ranges qu\'il contient ne seront pas supprimées.')) return;
     onStateChange({ ...state, collections: state.collections.filter(c => c.id !== id) });
+  };
+
+  const duplicateCollection = (col: typeof state.collections[number]) => {
+    // Duplicate all ranges in the collection with new ids
+    const idMap = new Map<string, string>(); // old id → new id
+    const newRanges = col.rangeIds.map(rid => {
+      const original = state.ranges.find(r => r.id === rid);
+      if (!original) return null;
+      const newId = crypto.randomUUID();
+      idMap.set(rid, newId);
+      return { ...original, id: newId, title: `Copie de ${original.title}`, createdAt: Date.now(), updatedAt: Date.now() };
+    }).filter(Boolean) as typeof state.ranges;
+
+    const newCol = {
+      ...col,
+      id: crypto.randomUUID(),
+      title: `Copie de ${col.title}`,
+      rangeIds: col.rangeIds.map(rid => idMap.get(rid) ?? rid),
+      createdAt: Date.now(),
+    };
+
+    onStateChange({
+      ...state,
+      ranges: [...state.ranges, ...newRanges],
+      collections: [...state.collections, newCol],
+    });
   };
 
   const updateCollectionTitle = (id: string, title: string) => {
@@ -156,7 +183,13 @@ export default function Sidebar({ state, selectedRangeId, onSelectRange, onState
                 onClick={e => e.stopPropagation()}
               />
               <button
+                className="btn-icon"
+                title="Dupliquer le dossier"
+                onClick={e => { e.stopPropagation(); duplicateCollection(col); }}
+              ><Copy size={12} /></button>
+              <button
                 className="btn-icon danger"
+                title="Supprimer le dossier"
                 onClick={e => { e.stopPropagation(); deleteCollection(col.id); }}
               ><Trash2 size={12} /></button>
             </div>

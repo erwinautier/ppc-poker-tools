@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { AppState, Range } from './types';
-import { loadState, saveState, exportStateJSON, importStateJSON, newRange } from './store';
+import { loadState, saveState, exportStateJSON, importAndMergeStateJSON, newRange } from './store';
 import { exportRangeToPDF } from './pdfExport';
 import Sidebar from './components/Sidebar';
 import HandMatrix from './components/HandMatrix';
@@ -101,11 +101,11 @@ function AppInner() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       try {
-        const imported = await importStateJSON(file);
-        setState(imported);
-        setSelectedRangeId(imported.ranges[0]?.id ?? null);
-      } catch {
-        alert("Erreur lors de l'import du fichier JSON.");
+        const merged = await importAndMergeStateJSON(file, state);
+        setState(merged);
+        setSelectedRangeId(merged.ranges[0]?.id ?? null);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Erreur lors de l'import du fichier JSON.");
       }
     };
     input.click();

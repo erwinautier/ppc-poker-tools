@@ -27,8 +27,18 @@ export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+export interface ExportedState extends AppState {
+  exportedBy?: string;
+  exportedAt?: string;
+}
+
 export function exportStateJSON(state: AppState, username?: string): void {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const payload: ExportedState = {
+    ...state,
+    exportedBy: username,
+    exportedAt: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -38,14 +48,62 @@ export function exportStateJSON(state: AppState, username?: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function importStateJSON(file: File): Promise<AppState> {
+export function importAndMergeStateJSON(
+  file: File,
+  current: AppState,
+): Promise<AppState> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        resolve(JSON.parse(e.target!.result as string));
-      } catch {
-        reject(new Error('Fichier JSON invalide'));
+        const imported: ExportedState = JSON.parse(e.target!.result as string);
+        if (!Array.isArray(imported.ranges)) throw new Error('Format invalide');
+
+        const author = imported.exportedBy ?? 'inconnu';
+
+        // Merge ranges — deduplicate by id, keep most recent updatedAt
+        const existingById = new Map(current.ranges.map(r => [r.id, r]));
+        for (const r of imported.ranges) {
+          const existing = existingById.get(r.id);
+          if (!existing || (r.updatedAt ?? 0) > (existing.updatedAt ?? 0)) {
+            existingById.set(r.id, migrateRange(r));
+          }
+        }
+        const mergedRanges = [...existingById.values()];
+
+        // Create a collection grouping all imported range ids
+        const importedIds = imported.ranges.map(r => r.id);
+        const collectionTitle = `Ranges de ${author}`;
+
+        // If a collection with same title already exists, update its rangeIds
+        const existingCol = current.collections.find(c => c.title === collectionTitle);
+        let mergedCollections: AppState['collections'];
+        if (existingCol) {
+          const merged = [...new Set([...existingCol.rangeIds, ...importedIds])];
+          mergedCollections = current.collections.map(c =>
+            c.id === existingCol.id ? { ...c, rangeIds: merged } : c
+          );
+        } else {
+          const newCol = {
+            id: crypto.randomUUID(),
+            title: collectionTitle,
+            description: `Importé le ${new Date().toLocaleDateString('fr-FR')}`,
+            rangeIds: importedIds,
+            createdAt: Date.now(),
+          };
+          mergedCollections = [...current.collections, newCol];
+        }
+
+        // Also merge existing collections from the imported file
+        for (const col of (imported.collections ?? [])) {
+          if (!mergedCollections.find(c => c.id === col.id) && col.title !== collectionTitle) {
+            mergedCollections = [...mergedCollections, col];
+          }
+        }
+
+        resolve({ ranges: mergedRanges, collections: mergedCollections });
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error('Fichier JSON invalide'));
       }
     };
     reader.readAsText(file);
