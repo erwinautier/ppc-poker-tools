@@ -7,7 +7,7 @@ import HandMatrix from './components/HandMatrix';
 import PaletteEditor from './components/PaletteEditor';
 import RangeSettings from './components/RangeSettings';
 import RangeStats from './components/RangeStats';
-import { Download, FileDown, Upload, Eraser, Menu, X, LogOut } from 'lucide-react';
+import { Download, FileDown, Upload, Eraser, Menu, X, LogOut, MoreVertical } from 'lucide-react';
 import { AuthGate, useAuthContext } from './lib/AuthGate';
 import { useCloudSync } from './lib/useCloudSync';
 import { useAuth } from './lib/useAuth';
@@ -39,6 +39,7 @@ function AppInner() {
   const { state: authState } = useAuth();
   const userId = authState.status === 'authenticated' ? authState.user.id : null;
   const { scheduleSync, status: syncStatus, loaded } = useCloudSync(userId);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [state, setState] = useState<AppState>(loadState);
   const [selectedRangeId, setSelectedRangeId] = useState<string | null>(
@@ -148,19 +149,61 @@ function AppInner() {
         <SyncBadge status={syncStatus} />
 
         <div className="header-actions">
-          <button className="btn" onClick={handleImport}>
+          {/* Desktop : boutons visibles */}
+          <button className="btn desktop-only" onClick={handleImport}>
             <Upload size={15} /><span className="btn-label"> Importer</span>
           </button>
-          <button className="btn" onClick={() => exportStateJSON(state, username)}>
+          <button className="btn desktop-only" onClick={() => exportStateJSON(state, username)}>
             <Download size={15} /><span className="btn-label"> JSON</span>
           </button>
           {selectedRange && (
-            <button className="btn accent" onClick={() => exportRangeToPDF(selectedRange, matrixFont).catch(console.error)}>
+            <button className="btn accent desktop-only" onClick={() => exportRangeToPDF(selectedRange, matrixFont).catch(console.error)}>
               <FileDown size={15} /><span className="btn-label"> PDF</span>
             </button>
           )}
-          {/* User / logout */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+
+          {/* Mobile : menu ··· */}
+          <div className="mobile-only" style={{ position: 'relative' }}>
+            <button className="btn" onClick={() => setMoreOpen(o => !o)} title="Plus d'actions">
+              <MoreVertical size={16} />
+            </button>
+            {moreOpen && (
+              <>
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 199 }}
+                  onClick={() => setMoreOpen(false)}
+                />
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 200,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 10, overflow: 'hidden', minWidth: 180,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                }}>
+                  {[
+                    { icon: <Upload size={15} />, label: 'Importer', action: () => { handleImport(); setMoreOpen(false); } },
+                    { icon: <Download size={15} />, label: 'Exporter JSON', action: () => { exportStateJSON(state, username); setMoreOpen(false); } },
+                    ...(selectedRange ? [{ icon: <FileDown size={15} />, label: 'Exporter PDF', action: () => { exportRangeToPDF(selectedRange, matrixFont).catch(console.error); setMoreOpen(false); } }] : []),
+                    { icon: <LogOut size={15} />, label: 'Déconnexion', action: () => { signOut(); setMoreOpen(false); } },
+                  ].map(({ icon, label, action }) => (
+                    <button key={label} onClick={action} style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '12px 16px', background: 'none', border: 'none',
+                      color: 'var(--text)', cursor: 'pointer', fontSize: '0.9rem',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                    >
+                      {icon} {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* User / logout — desktop only */}
+          <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{username}</span>
             <button className="btn" title="Se déconnecter" onClick={signOut}>
               <LogOut size={14} />

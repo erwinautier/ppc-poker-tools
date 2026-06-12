@@ -76,7 +76,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', system-u
   text-overflow: ellipsis;
 }
 
-.header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.header-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+
+/* Visibilité desktop/mobile */
+.mobile-only { display: none; }
+.desktop-only { display: flex; }
 
 /* ── Corps ── */
 .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
@@ -725,22 +729,85 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', system-u
   /* Réduit le padding des boutons header */
   .btn { padding: 7px 10px; }
 
-  /* ── Sidebar en tiroir ── */
+  /* Bascule desktop/mobile */
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+
+  /* ── Sidebar pleine largeur sur mobile ── */
   .sidebar {
     position: fixed;
     top: var(--header-h);
     left: 0;
+    right: 0;
     bottom: 0;
-    width: var(--sidebar-w);
+    width: 100%;
     z-index: 100;
-    transform: translateX(-100%); /* caché par défaut */
-    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+    transform: translateX(-100%);
+    box-shadow: none;
   }
 
-  /* Quand le sidebar est ouvert */
   .sidebar.sidebar--open {
     transform: translateX(0);
   }
+
+  /* Items de range plus grands et aérés */
+  .sidebar-range {
+    padding: 14px 90px 14px 14px;
+    min-height: 64px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .sidebar-range.active {
+    border-color: var(--accent);
+    background: rgba(79,126,248,0.08);
+  }
+  .range-title-text { font-size: 15px; font-weight: 600; }
+  .range-meta { font-size: 12px; margin-top: 2px; }
+
+  /* Boutons d'action toujours visibles, plus grands */
+  .range-actions {
+    display: flex;
+    right: 10px;
+    gap: 6px;
+  }
+  .range-actions .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .range-actions .btn-icon.danger { border-color: rgba(239,68,68,0.3); }
+
+  /* Header de collection plus grand */
+  .collection-header {
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: var(--bg);
+    margin-bottom: 4px;
+  }
+
+  /* Section label */
+  .section-label-sidebar {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 8px 4px 4px;
+  }
+
+  /* Padding du contenu sidebar */
+  .sidebar-content { padding: 12px; }
+  .sidebar-header { padding: 14px 16px; }
+  .sidebar-title { font-size: 16px; }
+  .sidebar-actions .btn-icon { width: 36px; height: 36px; }
 
   /* Overlay visible quand sidebar ouvert */
   .sidebar-overlay {
