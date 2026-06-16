@@ -1,11 +1,27 @@
-import type { AppState, Range, Collection } from './types';
+import type { AppState, Range, Collection, HandAssignment } from './types';
 
 const STORAGE_KEY = 'range-editor-v1';
 
+/** Si la somme des fréquences d'une main dépasse 100%, on la ramène à 100% au prorata. */
+function normalizeAssignment(assignment: HandAssignment): HandAssignment {
+  const entries = Object.entries(assignment).filter(([, v]) => v > 0);
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  if (total <= 100 || total === 0) return assignment;
+  const scale = 100 / total;
+  const result: HandAssignment = {};
+  entries.forEach(([k, v]) => { result[k] = Math.round(v * scale); });
+  return result;
+}
+
 /** Migration des ranges créées avant l'ajout de nouveaux champs */
 function migrateRange(r: Range): Range {
+  const hands: Record<string, HandAssignment> = {};
+  for (const [k, v] of Object.entries(r.hands ?? {})) {
+    hands[k] = normalizeAssignment(v);
+  }
   return {
     ...r,
+    hands,
     rangeType: r.rangeType ?? 'open',
     actionSequence: r.actionSequence ?? [],
     notes: r.notes ?? '',
