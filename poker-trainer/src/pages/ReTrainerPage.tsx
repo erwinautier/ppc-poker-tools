@@ -12,6 +12,7 @@ import {
 import { pickHandForRange, type ProximityMode } from '../engine/reHandPicker';
 import { handKeyToCards } from '../engine/smartTrainer';
 import { useSyncContext } from '../lib/SyncContext';
+import PokerTableView from '../components/PokerTableView';
 
 // ── Proximity config ──────────────────────────────────────────────────────────
 
@@ -585,8 +586,11 @@ function TrainingSession({
           </div>
         </div>
 
-        {/* Cards */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 14, padding: '10px 0' }}>
+        {/* Table visuelle */}
+        <PokerTableView range={range} />
+
+        {/* Cards — sous la table, à la place du siège héros */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 14, padding: '4px 0 10px' }}>
           <HandCard {...c1} />
           <HandCard {...c2} />
         </div>
