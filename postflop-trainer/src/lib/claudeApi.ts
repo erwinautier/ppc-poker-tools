@@ -44,19 +44,27 @@ export async function callClaudeAfterHeroAction(params: {
   const heroPos = heroIsIP ? 'IP (en position)' : 'OOP (hors position)';
   const villainPos = heroIsIP ? 'OOP' : 'IP';
 
+  const facingHeroBet = heroAction.type === 'bet' || heroAction.type === 'raise' || heroAction.type === 'all_in';
+  const villainOptions = facingHeroBet
+    ? '"fold" si la main est trop faible face au bet, "call" pour continuer, "raise" ou "all_in" avec des mains très fortes (sets, deux paires, nuts draws)'
+    : '"check" pour contrôler, "bet" avec des mains qui ont de la valeur ou des bluffs avec équité';
+
   const prompt = `Tu es un solver GTO de poker NLHE 6-max. Analyse l'action de Hero et simule la réponse du Villain.
 
 SITUATION:
 - Street : ${streetLabel(street)} | Board : ${boardText(board)}
 - Pot : ${pot.toFixed(1)}bb | Stack Hero : ${heroStack.toFixed(1)}bb | Stack Villain : ${villainStack.toFixed(1)}bb
 - Hero : ${heroHand.join(' ')} (${heroHandType}) — ${heroPos}
-- Villain : ${villainPickedHand.join(' ')} (${villainPickedHandType}) — ${villainPos} [CONFIDENTIEL, ne pas révéler à Hero]
+- Villain : ${villainPickedHand.join(' ')} (${villainPickedHandType}) — ${villainPos}
 - Range Hero : ${rangeText(heroRange)} | Range Villain : ${rangeText(villainRange)}
-- Historique complet de la main : ${historyText(allHandActions)}
+- Historique complet : ${historyText(allHandActions)}
 - DERNIÈRE ACTION HERO : ${actionLabel(heroAction)}
 
 Commentaire GTO : 2-3 phrases précises sur l'action Hero (fréquences GTO, avantage de range, texture board).
-Action Villain : joue de façon COHÉRENTE avec ${villainPickedHand.join(' ')} (${villainPickedHandType}) et son historique sur cette main.
+
+Action Villain — IMPORTANT : joue de façon RÉALISTE et COHÉRENTE avec ${villainPickedHand.join(' ')} (${villainPickedHandType}).
+Options selon situation : ${villainOptions}.
+Ne checke/call pas automatiquement — fold si la main n'a pas assez d'équité, raise si elle est très forte.
 
 Réponds UNIQUEMENT avec du JSON valide (sans markdown) :
 {
