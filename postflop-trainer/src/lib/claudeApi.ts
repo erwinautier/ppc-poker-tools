@@ -26,6 +26,8 @@ export async function callClaudeAfterHeroAction(params: {
   heroIsIP: boolean;
   heroRange: Range;
   villainRange: Range;
+  villainPickedHand: [Card, Card];
+  villainPickedHandType: string;
   board: Card[];
   street: Street;
   pot: number;
@@ -36,26 +38,32 @@ export async function callClaudeAfterHeroAction(params: {
   allHandActions: StreetAction[];
 }): Promise<ClaudeResponse> {
   const { apiKey, heroHand, heroHandType, heroIsIP, heroRange, villainRange,
-    board, street, pot, heroStack, villainStack, heroAction, priorStreetActions } = params;
+    villainPickedHand, villainPickedHandType,
+    board, street, pot, heroStack, villainStack, heroAction, allHandActions } = params;
 
   const heroPos = heroIsIP ? 'IP (en position)' : 'OOP (hors position)';
+  const villainPos = heroIsIP ? 'OOP' : 'IP';
 
-  const prompt = `Tu es un solver GTO de poker NLHE 6-max. Analyse l'action de Hero en la comparant à la stratégie GTO optimale.
+  const prompt = `Tu es un solver GTO de poker NLHE 6-max. Analyse l'action de Hero et simule la réponse du Villain.
 
 SITUATION:
 - Street : ${streetLabel(street)} | Board : ${boardText(board)}
 - Pot : ${pot.toFixed(1)}bb | Stack Hero : ${heroStack.toFixed(1)}bb | Stack Villain : ${villainStack.toFixed(1)}bb
 - Hero : ${heroHand.join(' ')} (${heroHandType}) — ${heroPos}
+- Villain : ${villainPickedHand.join(' ')} (${villainPickedHandType}) — ${villainPos} [CONFIDENTIEL, ne pas révéler à Hero]
 - Range Hero : ${rangeText(heroRange)} | Range Villain : ${rangeText(villainRange)}
-- Actions précédentes ce street : ${historyText(priorStreetActions)}
-- ACTION HERO : ${actionLabel(heroAction)}
+- Historique complet de la main : ${historyText(allHandActions)}
+- DERNIÈRE ACTION HERO : ${actionLabel(heroAction)}
+
+Commentaire GTO : 2-3 phrases précises sur l'action Hero (fréquences GTO, avantage de range, texture board).
+Action Villain : joue de façon COHÉRENTE avec ${villainPickedHand.join(' ')} (${villainPickedHandType}) et son historique sur cette main.
 
 Réponds UNIQUEMENT avec du JSON valide (sans markdown) :
 {
-  "comment": "2-3 phrases PRÉCISES et CHIFFRÉES comparant l'action de Hero à la GTO. Mentionne : fréquence GTO recommandée pour cette main dans ce spot, avantage de range, texture du board et pourquoi l'action est correcte ou non. Exemple de format attendu : 'Sur ce board K72r, IP bet ~45% en 33%. Votre main AhQh sans paire est trop faible pour être dans la range de bet — GTO la checke ~60%. Votre bet surreprésente votre range.'",
+  "comment": "ex: 'Sur ce board K72r, IP bet ~45% en 33%. Votre AhQh est trop faible — GTO checke ~60%.'",
   "villain": {
     "action": "check"|"bet"|"call"|"fold"|"raise"|"all_in",
-    "amount": <montant en BB si bet/raise/call, sinon OMETTRE ce champ>
+    "amount": <montant en BB si bet/raise/call, sinon OMETTRE>
   }
 }`;
 
@@ -69,6 +77,8 @@ export async function callClaudeVillainFirst(params: {
   heroIsIP: boolean;
   heroRange: Range;
   villainRange: Range;
+  villainPickedHand: [Card, Card];
+  villainPickedHandType: string;
   board: Card[];
   street: Street;
   pot: number;
@@ -77,24 +87,26 @@ export async function callClaudeVillainFirst(params: {
   allHandActions: StreetAction[];
 }): Promise<VillainOnlyResponse> {
   const { apiKey, heroIsIP, villainRange,
+    villainPickedHand, villainPickedHandType,
     board, street, pot, heroStack, villainStack, allHandActions } = params;
 
   const villainPos = heroIsIP ? 'OOP (hors position)' : 'IP (en position)';
 
   const prompt = `Tu es un simulateur de poker NLHE 6-max SRP HU. Simule l'action du Villain (${villainPos}) en début de street.
+Villain a : ${villainPickedHand.join(' ')} (${villainPickedHandType}) — joue de façon COHÉRENTE avec cette main et l'historique.
 Range Villain : ${rangeText(villainRange)}
 Board : ${boardText(board)} | Street : ${streetLabel(street)} | Pot : ${pot.toFixed(1)}bb | Stacks Hero ${heroStack.toFixed(1)}bb / Villain ${villainStack.toFixed(1)}bb
-Historique : ${historyText(allHandActions)}
+Historique complet : ${historyText(allHandActions)}
 
 Réponds UNIQUEMENT avec du JSON valide (sans markdown) :
 {
   "villain": {
     "action": "check"|"bet",
-    "amount": <BB si bet, sinon OMETTRE ce champ>
+    "amount": <BB si bet, sinon OMETTRE>
   }
 }`;
 
-  return callGroq<VillainOnlyResponse>(apiKey, prompt, 100);
+  return callGroq<VillainOnlyResponse>(apiKey, prompt, 150);
 }
 
 export async function callClaudeHandReview(params: {
@@ -104,30 +116,33 @@ export async function callClaudeHandReview(params: {
   heroIsIP: boolean;
   heroRange: Range;
   villainRange: Range;
+  villainPickedHand: [Card, Card];
+  villainPickedHandType: string;
   board: Card[];
   allHandActions: StreetAction[];
 }): Promise<HandReview> {
-  const { apiKey, heroHand, heroHandType, heroIsIP, heroRange, villainRange, board, allHandActions } = params;
+  const { apiKey, heroHand, heroHandType, heroIsIP, heroRange, villainRange,
+    villainPickedHand, villainPickedHandType, board, allHandActions } = params;
 
   const heroPos = heroIsIP ? 'IP' : 'OOP';
+  const villainPos = heroIsIP ? 'OOP' : 'IP';
 
-  const prompt = `Tu es un coach poker GTO. La main est terminée. Révèle une main plausible pour le Villain selon sa range, et explique chaque action en termes GTO.
+  const prompt = `Tu es un coach poker GTO. La main est terminée. Explique chaque action en termes GTO.
 
 Board final : ${boardText(board)}
 Hero : ${heroHand.join(' ')} (${heroHandType}) — ${heroPos}
-Range Hero : ${rangeText(heroRange)}
-Range Villain : ${rangeText(villainRange)}
+Villain : ${villainPickedHand.join(' ')} (${villainPickedHandType}) — ${villainPos}
+Range Hero : ${rangeText(heroRange)} | Range Villain : ${rangeText(villainRange)}
 Actions complètes : ${historyText(allHandActions)}
 
-Choisis UNE main spécifique pour Villain cohérente avec ses actions (ex: "Kd8s").
-Pour chaque action Hero ET Villain, donne une explication GTO courte et concrète.
+Pour chaque action Hero ET Villain, donne une explication GTO courte et concrète (fréquences, equity, pourquoi cette action avec cette main sur ce board).
 
 Réponds UNIQUEMENT avec du JSON valide (sans markdown) :
 {
-  "villainHand": "ex: Kd8s",
+  "villainHand": "${villainPickedHand.join('')}",
   "summary": "1-2 phrases résumant la dynamique de la main et les enseignements clés",
   "items": [
-    { "player": "hero"|"villain", "action": "ex: Check flop", "explanation": "ex: GTO correct — votre main est trop faible pour bet sur ce board..." }
+    { "player": "hero"|"villain", "action": "ex: Check flop", "explanation": "ex: GTO correct — trop faible pour bet sur ce board K72r..." }
   ]
 }`;
 

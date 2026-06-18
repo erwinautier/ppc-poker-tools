@@ -50,6 +50,7 @@ export default function GamePage({ game: initialGame, apiKey, onNewHand }: GameP
         apiKey,
         heroHand: g.heroHand, heroHandType: g.heroHandType,
         heroIsIP: g.heroIsIP, heroRange: g.heroRange, villainRange: g.villainRange,
+        villainPickedHand: g.villainPickedHand, villainPickedHandType: g.villainPickedHandType,
         board: g.board as Card[],
         allHandActions: g.allActions,
       });
@@ -69,6 +70,7 @@ export default function GamePage({ game: initialGame, apiKey, onNewHand }: GameP
         apiKey,
         heroHand: g.heroHand, heroHandType: g.heroHandType,
         heroIsIP: g.heroIsIP, heroRange: g.heroRange, villainRange: g.villainRange,
+        villainPickedHand: g.villainPickedHand, villainPickedHandType: g.villainPickedHandType,
         board: g.board as Card[], street: g.street,
         pot: g.pot, heroStack: g.heroStack, villainStack: g.villainStack,
         allHandActions: g.allActions,
@@ -111,6 +113,7 @@ export default function GamePage({ game: initialGame, apiKey, onNewHand }: GameP
         apiKey,
         heroHand: game.heroHand, heroHandType: game.heroHandType,
         heroIsIP: game.heroIsIP, heroRange: game.heroRange, villainRange: game.villainRange,
+        villainPickedHand: game.villainPickedHand, villainPickedHandType: game.villainPickedHandType,
         board: game.board as Card[], street: game.street,
         pot: afterHero.pot, heroStack: afterHero.heroStack, villainStack: afterHero.villainStack,
         heroAction, priorStreetActions,

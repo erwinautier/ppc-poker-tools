@@ -17,18 +17,25 @@ interface Session {
 }
 
 function buildNewGame(session: Session): GameState | null {
-  const { heroRange, villainRange } = session;
+  // Randomly swap hero/villain ranges to vary positions each hand
+  const swap = Math.random() < 0.5;
+  const heroRange = swap ? session.villainRange : session.heroRange;
+  const villainRange = swap ? session.heroRange : session.villainRange;
 
   const heroIsIP = isHeroIP(heroRange.position, villainRange.position);
 
   // Pick hero's hand
   const picked = pickHandFromRange(heroRange);
   if (!picked) return null;
-
   const { handType, cards: heroHand } = picked;
 
-  // Deal flop (avoid hero's cards)
-  const flop = dealCards(3, [...heroHand]) as Card[];
+  // Pick villain's hand (avoid hero cards) — kept hidden during play, used for consistent AI simulation
+  const villainPicked = pickHandFromRange(villainRange, [...heroHand]);
+  if (!villainPicked) return null;
+  const { handType: villainHandType, cards: villainPickedHand } = villainPicked;
+
+  // Deal flop (avoid both hands)
+  const flop = dealCards(3, [...heroHand, ...villainPickedHand]) as Card[];
 
   // Determine starting phase: OOP acts first
   const initialStreetActions = [] as GameState['streetActions'];
@@ -39,15 +46,17 @@ function buildNewGame(session: Session): GameState | null {
   else if (next.who === 'villain') phase = 'villain_turn';
   else phase = 'hero_turn';
 
-  // SRP pot: approx 6bb (open 2.5 + call 2.5 + blinds); effective stack ~94bb
+  // SRP pot: approx 6.5bb (open 2.5 + call 2.5 + blinds)
   const pot = 6.5;
-  const stack = (heroRange.stackBB ?? 100) - 3; // subtract hero's preflop investment
+  const stack = (heroRange.stackBB ?? 100) - 3;
 
   return {
     heroRange,
     villainRange,
     heroHand,
     heroHandType: handType,
+    villainPickedHand,
+    villainPickedHandType: villainHandType,
     board: flop,
     street: 'flop',
     pot,

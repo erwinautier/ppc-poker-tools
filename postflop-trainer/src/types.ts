@@ -70,6 +70,8 @@ export interface GameState {
   villainRange: Range;
   heroHand: [Card, Card];
   heroHandType: string;
+  villainPickedHand: [Card, Card];
+  villainPickedHandType: string;
   board: Card[];
   street: Street;
   pot: number;
