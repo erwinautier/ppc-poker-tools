@@ -140,6 +140,9 @@ export default function GamePage({ game: initialGame, apiKey, onNewHand }: GameP
         allActions: finalAllActions,
         pot: finalPot, heroStack: finalHeroStack, villainStack: finalVillainStack,
         lastComment: resp.comment,
+        lastHeroAction: heroAction,
+        lastGtoAction: resp.gtoAction ?? null,
+        lastGtoAmount: resp.gtoAmount ?? null,
         lastVillainAction: villainMustAct ? (resp.villain ?? null) : null,
         phase: 'showing_result', error: null,
       }));
@@ -185,6 +188,9 @@ export default function GamePage({ game: initialGame, apiKey, onNewHand }: GameP
       streetActions: [],
       phase: firstPhase,
       lastComment: null,
+      lastHeroAction: null,
+      lastGtoAction: null,
+      lastGtoAmount: null,
       lastVillainAction: null,
       handReview: null,
       error: null,
@@ -298,9 +304,12 @@ export default function GamePage({ game: initialGame, apiKey, onNewHand }: GameP
         )}
 
         {/* GTO comment */}
-        {phase === 'showing_result' && lastComment && (
+        {phase === 'showing_result' && lastComment && game.lastHeroAction && game.lastGtoAction && (
           <CommentBox
             comment={lastComment}
+            heroAction={game.lastHeroAction}
+            gtoAction={game.lastGtoAction}
+            gtoAmount={game.lastGtoAmount ?? undefined}
             onContinue={handleContinueAfterResult}
             continueLabel={continueLabel}
           />

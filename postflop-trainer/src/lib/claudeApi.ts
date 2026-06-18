@@ -15,6 +15,8 @@ function boardText(board: Card[]): string {
   return board.join(' ');
 }
 
+const LANG_RULE = `IMPORTANT: Use English poker terms without translating them: call, check, bet, raise, fold, board, stack, pot, range, equity, bluff, value, draw, IP, OOP, GTO, overcards, nuts, donk, c-bet, 3-bet, float. Write explanations in French but keep poker terms in English.`;
+
 function rangeText(r: Range): string {
   return `"${r.title}" (position: ${r.position}, stack: ${r.stackBB}bb)`;
 }
@@ -50,6 +52,7 @@ export async function callClaudeAfterHeroAction(params: {
     : '"check" pour contrôler, "bet" avec des mains qui ont de la valeur ou des bluffs avec équité';
 
   const prompt = `Tu es un solver GTO de poker NLHE 6-max. Analyse l'action de Hero et simule la réponse du Villain.
+${LANG_RULE}
 
 SITUATION:
 - Street : ${streetLabel(street)} | Board : ${boardText(board)}
@@ -58,21 +61,22 @@ SITUATION:
 - Villain : ${villainPickedHand.join(' ')} (${villainPickedHandType}) — ${villainPos}
 - Range Hero : ${rangeText(heroRange)} | Range Villain : ${rangeText(villainRange)}
 - Historique complet : ${historyText(allHandActions)}
-- DERNIÈRE ACTION HERO : ${actionLabel(heroAction)}
+- ACTION HERO : ${actionLabel(heroAction)}
 
-Commentaire GTO : 2-3 phrases précises sur l'action Hero (fréquences GTO, avantage de range, texture board).
-INTERDIT dans le commentaire : ne mentionne PAS la main du Villain, ne révèle aucune information sur ses cartes — elles restent cachées jusqu'à la fin.
-
-Action Villain — IMPORTANT : joue de façon RÉALISTE et COHÉRENTE avec ${villainPickedHand.join(' ')} (${villainPickedHandType}).
-Options selon situation : ${villainOptions}.
-Ne checke/call pas automatiquement — fold si la main n'a pas assez d'équité, raise si elle est très forte.
+Fournis :
+1. "gtoAction" : l'action GTO optimale pour Hero dans ce spot ("check", "bet", "call", "fold", "raise", "all_in")
+2. "gtoAmount" : montant en BB si gtoAction est bet/raise/call (sinon OMETTRE)
+3. "comment" : 1-2 phrases expliquant POURQUOI c'est la bonne action (fréquences, range advantage, board texture). Ne mentionne PAS la main du Villain.
+4. "villain" : réponse cohérente avec ${villainPickedHand.join(' ')} (${villainPickedHandType}). ${villainOptions}. Ne fold/call pas automatiquement.
 
 Réponds UNIQUEMENT avec du JSON valide (sans markdown) :
 {
-  "comment": "ex: 'Sur ce board K72r, IP bet ~45% en 33%. Votre AhQh est trop faible — GTO checke ~60%.'",
+  "gtoAction": "check"|"bet"|"call"|"fold"|"raise"|"all_in",
+  "gtoAmount": <BB si applicable, sinon OMETTRE>,
+  "comment": "ex: Sur ce board K72r, le range advantage IP justifie un c-bet ~45% en 33%. AhQh est trop faible pour bet — GTO checke ~60%.",
   "villain": {
     "action": "check"|"bet"|"call"|"fold"|"raise"|"all_in",
-    "amount": <montant en BB si bet/raise/call, sinon OMETTRE>
+    "amount": <BB si applicable, sinon OMETTRE>
   }
 }`;
 
@@ -102,6 +106,7 @@ export async function callClaudeVillainFirst(params: {
   const villainPos = heroIsIP ? 'OOP (hors position)' : 'IP (en position)';
 
   const prompt = `Tu es un simulateur de poker NLHE 6-max SRP HU. Simule l'action du Villain (${villainPos}) en début de street.
+${LANG_RULE}
 Villain a : ${villainPickedHand.join(' ')} (${villainPickedHandType}) — joue de façon COHÉRENTE avec cette main et l'historique.
 Range Villain : ${rangeText(villainRange)}
 Board : ${boardText(board)} | Street : ${streetLabel(street)} | Pot : ${pot.toFixed(1)}bb | Stacks Hero ${heroStack.toFixed(1)}bb / Villain ${villainStack.toFixed(1)}bb
@@ -137,6 +142,7 @@ export async function callClaudeHandReview(params: {
   const villainPos = heroIsIP ? 'OOP' : 'IP';
 
   const prompt = `Tu es un coach poker GTO. La main est terminée. Explique chaque action en termes GTO.
+${LANG_RULE}
 
 Board final : ${boardText(board)}
 Hero : ${heroHand.join(' ')} (${heroHandType}) — ${heroPos}

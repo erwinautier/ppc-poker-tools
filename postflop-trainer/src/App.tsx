@@ -15,6 +15,35 @@ interface Session {
   ranges: Range[]; // pool of ranges to draw from each hand
 }
 
+function calcPreflopPot(heroPos: string, villainPos: string, stackBB: number): { pot: number; stack: number } {
+  const openSize = stackBB < 30 ? 2 : 2.5;
+  const hasSB = heroPos === 'SB' || villainPos === 'SB';
+  const hasBB = heroPos === 'BB' || villainPos === 'BB';
+
+  let pot: number;
+  let invested: number;
+
+  if (hasSB && hasBB) {
+    // Blind battle: SB opens to 3bb, BB calls
+    invested = 3;
+    pot = 6;
+  } else if (hasBB) {
+    // Position player opens, BB defends, dead SB (0.5bb)
+    invested = openSize;
+    pot = openSize * 2 + 0.5;
+  } else if (hasSB) {
+    // BTN/CO opens, SB defends, dead BB (1bb)
+    invested = openSize;
+    pot = openSize * 2 + 1;
+  } else {
+    // Both non-blind: opener + caller, dead SB+BB (1.5bb)
+    invested = openSize;
+    pot = openSize * 2 + 1.5;
+  }
+
+  return { pot: +pot.toFixed(1), stack: +(stackBB - invested).toFixed(1) };
+}
+
 function pickTwoRanges(ranges: Range[]): [Range, Range] | null {
   // Build all valid pairs with different positions
   const pairs: [Range, Range][] = [];
@@ -60,9 +89,8 @@ function buildNewGame(session: Session): GameState | null {
   else if (next.who === 'villain') phase = 'villain_turn';
   else phase = 'hero_turn';
 
-  // SRP pot: approx 6.5bb (open 2.5 + call 2.5 + blinds)
-  const pot = 6.5;
-  const stack = (heroRange.stackBB ?? 100) - 3;
+  // SRP pot: calculated from positions and stack depth
+  const { pot, stack } = calcPreflopPot(heroRange.position, villainRange.position, heroRange.stackBB ?? 100);
 
   return {
     heroRange,
@@ -81,6 +109,9 @@ function buildNewGame(session: Session): GameState | null {
     streetActions: [],
     phase,
     lastComment: null,
+    lastHeroAction: null,
+    lastGtoAction: null,
+    lastGtoAmount: null,
     lastVillainAction: null,
     handReview: null,
     error: null,

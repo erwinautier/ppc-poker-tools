@@ -82,6 +82,9 @@ export interface GameState {
   streetActions: StreetAction[];
   phase: GamePhase;
   lastComment: string | null;
+  lastHeroAction: StreetAction | null;
+  lastGtoAction: ActionType | null;
+  lastGtoAmount: number | null;
   lastVillainAction: VillainDecision | null;
   handReview: HandReview | null;
   error: string | null;
@@ -95,6 +98,8 @@ export interface VillainDecision {
 
 export interface ClaudeResponse {
   comment: string;
+  gtoAction: ActionType;
+  gtoAmount?: number;
   villain: VillainDecision;
 }
 
