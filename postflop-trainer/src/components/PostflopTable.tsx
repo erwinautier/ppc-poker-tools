@@ -8,7 +8,7 @@ interface Props {
   heroIsIP: boolean;
   villainPos: string;
   villainStack: number;
-  villainHand?: string | null; // revealed at end of hand
+  villainHand?: [Card, Card] | null; // revealed at end of hand
   board: Card[];
   street: Street;
   pot: number;
@@ -149,8 +149,8 @@ export default function PostflopTable({
       {/* Villain cards — revealed or hidden */}
       {villainHand ? (
         <>
-          <CardSvg card={villainHand.slice(0, 2) as Card} x={cx - cardW - gap / 2} y={villainY + 52} w={cardW} h={cardH} />
-          <CardSvg card={villainHand.slice(2) as Card} x={cx + gap / 2} y={villainY + 52} w={cardW} h={cardH} />
+          <CardSvg card={villainHand[0]} x={cx - cardW - gap / 2} y={villainY + 52} w={cardW} h={cardH} />
+          <CardSvg card={villainHand[1]} x={cx + gap / 2} y={villainY + 52} w={cardW} h={cardH} />
         </>
       ) : (
         <>

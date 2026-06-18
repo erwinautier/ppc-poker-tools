@@ -248,7 +248,7 @@ export default function GamePage({ game: initialGame, apiKey, onNewHand }: GameP
             heroIsIP={heroIsIP}
             villainPos={villainRange.position}
             villainStack={villainStack}
-            villainHand={handReview?.villainHand ?? null}
+            villainHand={(phase === 'hand_over' || phase === 'reviewing') ? game.villainPickedHand : null}
             board={board as Card[]}
             street={street}
             pot={pot}
