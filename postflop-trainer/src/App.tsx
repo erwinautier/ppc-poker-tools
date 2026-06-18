@@ -12,15 +12,24 @@ type AppPhase = 'setup' | 'game';
 
 interface Session {
   apiKey: string;
-  heroRange: Range;
-  villainRange: Range;
+  ranges: Range[]; // pool of ranges to draw from each hand
+}
+
+function pickTwoRanges(ranges: Range[]): [Range, Range] | null {
+  if (ranges.length < 2) return null;
+  const idx1 = Math.floor(Math.random() * ranges.length);
+  let idx2 = Math.floor(Math.random() * (ranges.length - 1));
+  if (idx2 >= idx1) idx2++;
+  // Randomly assign hero/villain
+  return Math.random() < 0.5
+    ? [ranges[idx1], ranges[idx2]]
+    : [ranges[idx2], ranges[idx1]];
 }
 
 function buildNewGame(session: Session): GameState | null {
-  // Randomly swap hero/villain ranges to vary positions each hand
-  const swap = Math.random() < 0.5;
-  const heroRange = swap ? session.villainRange : session.heroRange;
-  const villainRange = swap ? session.heroRange : session.villainRange;
+  const pair = pickTwoRanges(session.ranges);
+  if (!pair) return null;
+  const [heroRange, villainRange] = pair;
 
   const heroIsIP = isHeroIP(heroRange.position, villainRange.position);
 
@@ -79,10 +88,10 @@ export default function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [gameKey, setGameKey] = useState(0);
 
-  const handleStart = useCallback((params: { apiKey: string; heroRange: Range; villainRange: Range }) => {
+  const handleStart = useCallback((params: { apiKey: string; ranges: Range[] }) => {
     const newGame = buildNewGame(params);
     if (!newGame) {
-      alert('Impossible de piocher une main depuis cette range. Vérifiez qu\'elle contient des mains jouables.');
+      alert('Impossible de piocher une main depuis ces ranges. Vérifiez qu\'elles contiennent des mains jouables.');
       return;
     }
     setSession(params);

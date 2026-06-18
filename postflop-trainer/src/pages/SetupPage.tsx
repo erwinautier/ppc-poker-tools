@@ -7,8 +7,7 @@ import type { Range, AppState } from '../types';
 interface SetupPageProps {
   onStart: (params: {
     apiKey: string;
-    heroRange: Range;
-    villainRange: Range;
+    ranges: Range[];
   }) => void;
 }
 
@@ -26,8 +25,7 @@ export default function SetupPage({ onStart }: SetupPageProps) {
   const [showKey, setShowKey] = useState(false);
   const [showTip, setShowTip] = useState(false);
   const [ranges, setRanges] = useState<Range[]>([]);
-  const [heroRangeId, setHeroRangeId] = useState('');
-  const [villainRangeId, setVillainRangeId] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importError, setImportError] = useState<string | null>(null);
   const [saveToCloud, setSaveToCloud] = useState(false);
   const [keyFromCloud, setKeyFromCloud] = useState(false);
@@ -53,13 +51,7 @@ export default function SetupPage({ onStart }: SetupPageProps) {
 
   function applyRanges(loaded: Range[]) {
     setRanges(loaded);
-    if (loaded.length >= 2) {
-      setHeroRangeId(loaded[0].id);
-      setVillainRangeId(loaded[1].id);
-    } else if (loaded.length === 1) {
-      setHeroRangeId(loaded[0].id);
-      setVillainRangeId('');
-    }
+    setSelectedIds(new Set(loaded.map(r => r.id)));
   }
 
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -85,9 +77,16 @@ export default function SetupPage({ onStart }: SetupPageProps) {
     e.target.value = '';
   }
 
-  const heroRange = ranges.find(r => r.id === heroRangeId);
-  const villainRange = ranges.find(r => r.id === villainRangeId);
-  const canStart = apiKey.trim().length > 10 && heroRange && villainRange && heroRange.id !== villainRange?.id;
+  const selectedRanges = ranges.filter(r => selectedIds.has(r.id));
+  const canStart = apiKey.trim().length > 10 && selectedRanges.length >= 2;
+
+  function toggleRange(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   async function handleDeleteFromCloud() {
     setCloudSaving(true);
@@ -101,7 +100,7 @@ export default function SetupPage({ onStart }: SetupPageProps) {
   }
 
   async function handleStart() {
-    if (!canStart || !heroRange || !villainRange) return;
+    if (!canStart) return;
     const key = apiKey.trim();
     setCloudSaving(true);
     try {
@@ -109,7 +108,7 @@ export default function SetupPage({ onStart }: SetupPageProps) {
     } finally {
       setCloudSaving(false);
     }
-    onStart({ apiKey: key, heroRange, villainRange });
+    onStart({ apiKey: key, ranges: selectedRanges });
   }
 
   return (
@@ -267,61 +266,41 @@ export default function SetupPage({ onStart }: SetupPageProps) {
                 </span>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-                <div>
-                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                    RANGE HERO (vous jouez)
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 4px' }}>
+                  Cochez les positions à inclure dans le tirage aléatoire (min. 2) :
+                </p>
+                {ranges.map(r => (
+                  <label key={r.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                    padding: '8px 10px', borderRadius: 8,
+                    background: selectedIds.has(r.id) ? '#0a1f3a' : 'var(--surface2)',
+                    border: `1px solid ${selectedIds.has(r.id) ? '#1d4ed8' : 'var(--border)'}`,
+                    transition: 'background 0.1s, border-color 0.1s',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleRange(r.id)}
+                      style={{ accentColor: '#3b82f6', width: 15, height: 15 }}
+                    />
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text)', fontWeight: 600, minWidth: 36 }}>
+                      {r.position}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {r.title} · {Object.keys(r.hands).length} mains · {r.stackBB}bb
+                    </span>
                   </label>
-                  <select
-                    value={heroRangeId}
-                    onChange={e => setHeroRangeId(e.target.value)}
-                    style={{
-                      width: '100%', padding: '9px 12px', boxSizing: 'border-box',
-                      background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8,
-                      color: 'var(--text)', fontSize: '0.85rem', cursor: 'pointer', outline: 'none',
-                    }}
-                  >
-                    {ranges.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {r.title} ({r.position} · {r.stackBB}bb · {Object.keys(r.hands).length} mains)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                    RANGE VILLAIN (adversaire simulé)
-                  </label>
-                  <select
-                    value={villainRangeId}
-                    onChange={e => setVillainRangeId(e.target.value)}
-                    style={{
-                      width: '100%', padding: '9px 12px', boxSizing: 'border-box',
-                      background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8,
-                      color: 'var(--text)', fontSize: '0.85rem', cursor: 'pointer', outline: 'none',
-                    }}
-                  >
-                    {ranges.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {r.title} ({r.position} · {r.stackBB}bb · {Object.keys(r.hands).length} mains)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {heroRange && villainRange && heroRange.id === villainRange.id && (
-                  <p style={{ fontSize: '0.78rem', color: '#f87171', margin: 0 }}>
-                    ⚠️ Hero et Villain ont la même range — choisissez deux ranges différentes.
-                  </p>
-                )}
-
-                {heroRange && villainRange && heroRange.id !== villainRange.id && (
-                  <div style={{ fontSize: '0.78rem', color: '#86efac', background: '#0a2010', borderRadius: 8, padding: '8px 12px' }}>
-                    {ranges.length} range{ranges.length > 1 ? 's' : ''} chargée{ranges.length > 1 ? 's' : ''} ·
-                    Hero : <strong>{heroRange.position}</strong> · Villain : <strong>{villainRange.position}</strong>
+                ))}
+                {selectedRanges.length >= 2 && (
+                  <div style={{ fontSize: '0.75rem', color: '#86efac', background: '#0a2010', borderRadius: 8, padding: '7px 10px', marginTop: 2 }}>
+                    ✓ {selectedRanges.length} positions sélectionnées — hero et villain tirés aléatoirement à chaque main
                   </div>
+                )}
+                {selectedRanges.length < 2 && ranges.length > 0 && (
+                  <p style={{ fontSize: '0.75rem', color: '#f87171', margin: 0 }}>
+                    ⚠️ Sélectionnez au moins 2 positions.
+                  </p>
                 )}
               </div>
             )}
