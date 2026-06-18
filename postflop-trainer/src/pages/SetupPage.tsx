@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Info, Upload } from 'lucide-react';
+import { Eye, EyeOff, Info, Upload, Cloud, CloudOff } from 'lucide-react';
 import { getPlayableRanges } from '../lib/storage';
+import { loadGroqKey, saveGroqKey, deleteGroqKeyFromCloud, isLoggedIn } from '../lib/supabase';
 import type { Range, AppState } from '../types';
 
 interface SetupPageProps {
@@ -28,11 +29,26 @@ export default function SetupPage({ onStart }: SetupPageProps) {
   const [heroRangeId, setHeroRangeId] = useState('');
   const [villainRangeId, setVillainRangeId] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
+  const [saveToCloud, setSaveToCloud] = useState(false);
+  const [keyFromCloud, setKeyFromCloud] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [cloudSaving, setCloudSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loaded = getPlayableRanges();
     applyRanges(loaded);
+    // Load saved API key + check login state
+    isLoggedIn().then(setLoggedIn);
+    loadGroqKey().then(result => {
+      if (result) {
+        setApiKey(result.key);
+        if (result.source === 'supabase') {
+          setKeyFromCloud(true);
+          setSaveToCloud(true);
+        }
+      }
+    });
   }, []);
 
   function applyRanges(loaded: Range[]) {
@@ -73,9 +89,27 @@ export default function SetupPage({ onStart }: SetupPageProps) {
   const villainRange = ranges.find(r => r.id === villainRangeId);
   const canStart = apiKey.trim().length > 10 && heroRange && villainRange && heroRange.id !== villainRange?.id;
 
-  function handleStart() {
+  async function handleDeleteFromCloud() {
+    setCloudSaving(true);
+    try {
+      await deleteGroqKeyFromCloud();
+      setKeyFromCloud(false);
+      setSaveToCloud(false);
+    } finally {
+      setCloudSaving(false);
+    }
+  }
+
+  async function handleStart() {
     if (!canStart || !heroRange || !villainRange) return;
-    onStart({ apiKey: apiKey.trim(), heroRange, villainRange });
+    const key = apiKey.trim();
+    setCloudSaving(true);
+    try {
+      await saveGroqKey(key, saveToCloud && loggedIn);
+    } finally {
+      setCloudSaving(false);
+    }
+    onStart({ apiKey: key, heroRange, villainRange });
   }
 
   return (
@@ -148,9 +182,40 @@ export default function SetupPage({ onStart }: SetupPageProps) {
                 {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, marginBottom: 0 }}>
-              La clé est utilisée uniquement pour cette session et n'est jamais sauvegardée.
-            </p>
+            {/* Save-to-cloud checkbox */}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: loggedIn ? 'pointer' : 'default',
+            }}>
+              <input
+                type="checkbox"
+                checked={saveToCloud}
+                onChange={e => setSaveToCloud(e.target.checked)}
+                disabled={!loggedIn}
+                style={{ accentColor: '#3b82f6', width: 15, height: 15, cursor: loggedIn ? 'pointer' : 'not-allowed' }}
+              />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', color: loggedIn ? 'var(--text)' : 'var(--text-muted)' }}>
+                {saveToCloud ? <Cloud size={13} /> : <CloudOff size={13} />}
+                Mémoriser sur tous mes appareils
+                {!loggedIn && <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>(connexion requise via Poker Trainer)</span>}
+              </span>
+            </label>
+
+            {/* Delete from cloud button */}
+            {keyFromCloud && (
+              <button
+                onClick={handleDeleteFromCloud}
+                disabled={cloudSaving}
+                style={{
+                  marginTop: 8, padding: '6px 12px', background: 'none',
+                  border: '1px solid #7f1d1d', borderRadius: 8,
+                  color: '#f87171', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <CloudOff size={12} />
+                {cloudSaving ? 'Suppression…' : 'Effacer la clé de la base de données'}
+              </button>
+            )}
           </div>
 
           {/* Range selection */}
@@ -264,8 +329,8 @@ export default function SetupPage({ onStart }: SetupPageProps) {
 
           {/* Start button */}
           <button
-            onClick={handleStart}
-            disabled={!canStart}
+            onClick={() => { void handleStart(); }}
+            disabled={!canStart || cloudSaving}
             style={{
               padding: '14px 20px',
               background: canStart ? '#1d4ed8' : '#1e2433',
