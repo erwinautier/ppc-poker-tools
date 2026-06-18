@@ -96,7 +96,6 @@ export default function PostflopTable({
   const heroY = H - cardH - 12;
 
   // Villain hand positions
-  const villainStartX = cx - cardW - gap / 2;
   const villainY = 12;
 
   return (

@@ -31,7 +31,6 @@ function buildNewGame(session: Session): GameState | null {
   const flop = dealCards(3, [...heroHand]) as Card[];
 
   // Determine starting phase: OOP acts first
-  const heroIsOOP = !heroIsIP;
   const initialStreetActions = [] as GameState['streetActions'];
   const next = getNextActor(initialStreetActions, heroIsIP);
 

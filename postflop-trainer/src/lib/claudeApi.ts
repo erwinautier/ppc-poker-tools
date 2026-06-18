@@ -36,7 +36,7 @@ export async function callClaudeAfterHeroAction(params: {
   allHandActions: StreetAction[];
 }): Promise<ClaudeResponse> {
   const { apiKey, heroHand, heroHandType, heroIsIP, heroRange, villainRange,
-    board, street, pot, heroStack, villainStack, heroAction, priorStreetActions, allHandActions } = params;
+    board, street, pot, heroStack, villainStack, heroAction, priorStreetActions } = params;
 
   const heroPos = heroIsIP ? 'IP (en position)' : 'OOP (hors position)';
 
@@ -76,10 +76,9 @@ export async function callClaudeVillainFirst(params: {
   villainStack: number;
   allHandActions: StreetAction[];
 }): Promise<VillainOnlyResponse> {
-  const { apiKey, heroHand, heroHandType, heroIsIP, heroRange, villainRange,
+  const { apiKey, heroIsIP, villainRange,
     board, street, pot, heroStack, villainStack, allHandActions } = params;
 
-  const heroPos = heroIsIP ? 'IP (en position)' : 'OOP (hors position)';
   const villainPos = heroIsIP ? 'OOP (hors position)' : 'IP (en position)';
 
   const prompt = `Tu es un simulateur de poker NLHE 6-max SRP HU. Simule l'action du Villain (${villainPos}) en début de street.
