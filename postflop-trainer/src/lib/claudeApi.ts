@@ -61,6 +61,7 @@ SITUATION:
 - DERNIÈRE ACTION HERO : ${actionLabel(heroAction)}
 
 Commentaire GTO : 2-3 phrases précises sur l'action Hero (fréquences GTO, avantage de range, texture board).
+INTERDIT dans le commentaire : ne mentionne PAS la main du Villain, ne révèle aucune information sur ses cartes — elles restent cachées jusqu'à la fin.
 
 Action Villain — IMPORTANT : joue de façon RÉALISTE et COHÉRENTE avec ${villainPickedHand.join(' ')} (${villainPickedHandType}).
 Options selon situation : ${villainOptions}.
