@@ -16,14 +16,19 @@ interface Session {
 }
 
 function pickTwoRanges(ranges: Range[]): [Range, Range] | null {
-  if (ranges.length < 2) return null;
-  const idx1 = Math.floor(Math.random() * ranges.length);
-  let idx2 = Math.floor(Math.random() * (ranges.length - 1));
-  if (idx2 >= idx1) idx2++;
+  // Build all valid pairs with different positions
+  const pairs: [Range, Range][] = [];
+  for (let i = 0; i < ranges.length; i++) {
+    for (let j = i + 1; j < ranges.length; j++) {
+      if (ranges[i].position !== ranges[j].position) {
+        pairs.push([ranges[i], ranges[j]]);
+      }
+    }
+  }
+  if (pairs.length === 0) return null;
+  const [a, b] = pairs[Math.floor(Math.random() * pairs.length)];
   // Randomly assign hero/villain
-  return Math.random() < 0.5
-    ? [ranges[idx1], ranges[idx2]]
-    : [ranges[idx2], ranges[idx1]];
+  return Math.random() < 0.5 ? [a, b] : [b, a];
 }
 
 function buildNewGame(session: Session): GameState | null {
