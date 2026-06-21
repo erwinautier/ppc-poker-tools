@@ -36,9 +36,27 @@ interface Seat {
   hasActed: boolean;
 }
 
+// Full positional rank (earlier = acts earlier preflop)
+const POSITION_RANK: Record<string, number> = {
+  'UTG': 0, 'UTG+1': 1, 'UTG+2': 2, 'LJ': 3, 'HJ': 4, 'CO': 5, 'BTN': 6, 'SB': 7, 'BB': 8,
+};
+
 function computeSeats(range: RERange): Seat[] {
-  const order = POSITIONS_BY_PLAYERS[range.players] ?? POSITIONS_BY_PLAYERS[6];
-  const heroIdx = order.indexOf(range.position);
+  const baseOrder = [...(POSITIONS_BY_PLAYERS[range.players] ?? POSITIONS_BY_PLAYERS[6])];
+  let heroIdx = baseOrder.indexOf(range.position);
+
+  // If position not in standard order (e.g. 'UTG' in 6-max), substitute the closest seat
+  if (heroIdx === -1) {
+    const heroRank = POSITION_RANK[range.position] ?? 0;
+    heroIdx = baseOrder.reduce((best, pos, i) => {
+      const d = Math.abs((POSITION_RANK[pos] ?? 0) - heroRank);
+      const dBest = Math.abs((POSITION_RANK[baseOrder[best]] ?? 0) - heroRank);
+      return d < dBest ? i : best;
+    }, 0);
+    baseOrder[heroIdx] = range.position; // keep the original label on the seat
+  }
+
+  const order = baseOrder;
   const n = order.length;
 
   // Réordonne la liste pour commencer par le héros, puis dans l'ordre de jeu
