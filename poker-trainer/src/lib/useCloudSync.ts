@@ -21,6 +21,7 @@ export function useCloudSync(userId: string | null) {
       // No user logged in: clear ranges from localStorage to avoid showing
       // data left by a previous user on this browser.
       localStorage.removeItem(LS_RANGES_KEY);
+      setLoaded(true);   // ← ne pas rester bloqué en "loading"
       return;
     }
     (async () => {
