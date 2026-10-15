@@ -4,14 +4,59 @@
     {
       "name": "poker-trainer",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "poker-trainer", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "poker-trainer",
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "range-editor",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "range-editor", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "range-editor",
+        "run",
+        "dev"
+      ],
       "port": 5174
+    },
+    {
+      "name": "postflop-trainer",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "postflop-trainer",
+        "run",
+        "dev"
+      ],
+      "port": 5175,
+      "autoPort": true
+    },
+    {
+      "name": "poker-club",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "poker-club",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "equity-calc",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "equity-calc",
+        "run",
+        "dev"
+      ],
+      "port": 5176,
+      "autoPort": true
     }
   ]
 }
