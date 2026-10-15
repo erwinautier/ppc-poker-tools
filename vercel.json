@@ -9,6 +9,8 @@
     { "source": "/postflop",  "destination": "/postflop/index.html" },
     { "source": "/postflop/((?!assets/).*)", "destination": "/postflop/index.html" },
     { "source": "/equity",  "destination": "/equity/index.html" },
-    { "source": "/equity/((?!assets/).*)", "destination": "/equity/index.html" }
+    { "source": "/equity/((?!assets/).*)", "destination": "/equity/index.html" },
+    { "source": "/tournoi",  "destination": "/tournoi/index.html" },
+    { "source": "/tournoi/((?!assets/).*)", "destination": "/tournoi/index.html" }
   ]
 }

@@ -1,0 +1,71 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117; --surface: #1a1f2e; --surface2: #242b3d; --border: #2e3650;
+  --text: #e8eaf0; --text-muted: #7a8299; --accent: #4f7ef8;
+  --gold: #f5c542; --green: #4ade80; --red: #f87171;
+}
+
+html, body { min-height: 100dvh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, textarea { font-family: inherit; }
+a { color: var(--accent); }
+
+.page { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.header img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.header h1 { font-size: 1.1rem; font-weight: 800; line-height: 1.1; }
+.header .sub { font-size: 0.72rem; color: var(--text-muted); }
+.header .spacer { flex: 1; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.card h2 { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; }
+.muted { color: var(--text-muted); font-size: 0.78rem; }
+
+.btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 9px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: #1a1200; }
+.btn.danger { background: #3a1818; border-color: var(--red); color: var(--red); }
+.btn.sm { padding: 5px 10px; font-size: 0.75rem; }
+.btn.block { width: 100%; padding: 12px; font-size: 0.95rem; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+input[type=text], textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 12px; font-size: 0.95rem; }
+textarea { min-height: 160px; resize: vertical; line-height: 1.5; }
+label { display: block; font-size: 0.75rem; color: var(--text-muted); margin: 10px 0 4px; font-weight: 600; }
+
+/* Tournament list */
+.tlist { display: flex; flex-direction: column; gap: 8px; }
+.titem { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; }
+.titem:hover { border-color: var(--accent); }
+.titem .name { font-weight: 700; flex: 1; }
+.titem .status { font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+.status.live { background: #133a22; color: var(--green); }
+.status.done { background: #2b2410; color: var(--gold); }
+
+/* Matches */
+.round-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.round-head h2 { margin: 0; }
+.match { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 8px; }
+.match .vs { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); letter-spacing: .08em; }
+.pbtn { width: 100%; padding: 14px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all .15s; }
+.pbtn:hover { border-color: var(--accent); }
+.pbtn.win { background: #133a22; border-color: var(--green); color: var(--green); }
+.pbtn.lose { opacity: .4; text-decoration: line-through; }
+.pbtn.locked { cursor: default; }
+.bye { background: var(--surface2); border: 1px dashed var(--border); border-radius: 10px; padding: 10px 12px; font-size: 0.85rem; margin-bottom: 8px; }
+.bye b { color: var(--gold); }
+
+.champion { text-align: center; padding: 28px 16px; }
+.champion .trophy { font-size: 3rem; }
+.champion .name { font-size: 1.6rem; font-weight: 900; color: var(--gold); margin: 6px 0; }
+
+details summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; padding: 6px 0; color: var(--text-muted); }
+.hist { margin: 8px 0 4px; }
+.hist .line { display: flex; gap: 8px; font-size: 0.85rem; padding: 5px 0; border-top: 1px solid var(--border); }
+.hist .w { color: var(--green); font-weight: 700; }
+.hist .l { color: var(--text-muted); text-decoration: line-through; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 0.78rem; padding: 4px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); }
+.chip.out { opacity: .45; text-decoration: line-through; }
