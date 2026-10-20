@@ -1,6 +1,6 @@
 import {
-  type Tournament, currentRound, roundComplete, survivors, champion, eliminated,
-  setWinner, nextRound, cancelLastRound, redrawCurrentRound, roundLabel,
+  type Tournament, currentRound, roundComplete, finished, champion, eliminated, standings,
+  setWinner, nextRound, addRound, cancelLastRound, redrawCurrentRound, roundLabel, FORMAT_LABEL,
 } from '../lib/tournament';
 
 interface Props {
@@ -12,24 +12,29 @@ interface Props {
 
 export function TournamentView({ t, onChange, onBack, onDelete }: Props) {
   const nameOf = (id: string) => t.players.find(p => p.id === id)?.name ?? '?';
+  const swiss = t.format === 'swiss';
   const round = currentRound(t)!;
   const complete = roundComplete(round);
+  const over = finished(t);
   const champ = champion(t);
   const alive = round.matches.length * 2 + (round.bye ? 1 : 0);
-  const label = roundLabel(alive);
+  const label = roundLabel(t, alive);
   const hasResult = round.matches.some(m => m.winner !== null);
   const outSet = new Set(eliminated(t).map(e => e.id));
-  const nextCount = complete ? survivors(round).length : 0;
+  const table = swiss ? standings(t) : null;
+  const canDrawNext = complete && !over;
 
   function pick(matchId: string, playerId: string, current: string | null) {
     onChange(setWinner(t, matchId, current === playerId ? null : playerId));
   }
 
+  const medal = (rank: number) => (over && rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `${rank}.`);
+
   return (
     <>
       <div className="row" style={{ marginBottom: 12 }}>
         <button className="btn sm" onClick={onBack}>← Tournois</button>
-        <span className="muted">{t.players.length} joueurs · {new Date(t.createdAt).toLocaleDateString('fr-FR')}</span>
+        <span className="muted">{FORMAT_LABEL[t.format]} · {t.players.length} joueurs · {new Date(t.createdAt).toLocaleDateString('fr-FR')}</span>
       </div>
 
       {champ && (
@@ -49,14 +54,14 @@ export function TournamentView({ t, onChange, onBack, onDelete }: Props) {
         </div>
 
         {round.bye && (
-          <div className="bye">Exempté ce tour : <b>{nameOf(round.bye)}</b></div>
+          <div className="bye">Exempté ce tour : <b>{nameOf(round.bye)}</b>{swiss && <span className="muted"> (victoire)</span>}</div>
         )}
 
         {round.matches.map(m => {
           const btn = (pid: string) => {
-            const cls = ['pbtn', m.winner === pid ? 'win' : '', m.winner && m.winner !== pid ? 'lose' : '', champ ? 'locked' : ''].join(' ');
+            const cls = ['pbtn', m.winner === pid ? 'win' : '', m.winner && m.winner !== pid ? 'lose' : '', over ? 'locked' : ''].join(' ');
             return (
-              <button className={cls} disabled={!!champ} onClick={() => pick(m.id, pid, m.winner)}>
+              <button className={cls} disabled={over} onClick={() => pick(m.id, pid, m.winner)}>
                 {nameOf(pid)}
               </button>
             );
@@ -70,26 +75,55 @@ export function TournamentView({ t, onChange, onBack, onDelete }: Props) {
           );
         })}
 
-        {!champ && (
-          <div style={{ marginTop: 14 }}>
-            {complete ? (
-              <button className="btn primary block" onClick={() => onChange(nextRound(t))}>
-                🎲 Tirer le tour {round.n + 1} ({nextCount} joueurs)
-              </button>
-            ) : (
-              <p className="muted" style={{ textAlign: 'center' }}>Touche le gagnant de chaque HU pour pouvoir tirer le tour suivant.</p>
-            )}
-            <div className="row" style={{ marginTop: 10, justifyContent: 'center' }}>
+        <div style={{ marginTop: 14 }}>
+          {canDrawNext && (
+            <button className="btn primary block" onClick={() => onChange(nextRound(t))}>
+              🎲 Tirer le tour {round.n + 1}{swiss ? '' : ` (${alive - round.matches.length} joueurs)`}
+            </button>
+          )}
+          {!complete && (
+            <p className="muted" style={{ textAlign: 'center' }}>Touche le gagnant de chaque HU pour pouvoir tirer le tour suivant.</p>
+          )}
+          {over && swiss && (
+            <button className="btn block" onClick={() => onChange(addRound(t))}>
+              + Ajouter un tour {t.rounds.length + 1}
+            </button>
+          )}
+          <div className="row" style={{ marginTop: 10, justifyContent: 'center' }}>
+            {!over && (
               <button className="btn sm" disabled={hasResult} onClick={() => onChange(redrawCurrentRound(t))}>↻ Retirer ce tour au sort</button>
-              {t.rounds.length > 1 && (
-                <button className="btn sm" onClick={() => { if (confirm(`Annuler le tour ${round.n} et revenir au tour ${round.n - 1} ?`)) onChange(cancelLastRound(t)); }}>
-                  ↩ Annuler ce tour
-                </button>
-              )}
-            </div>
+            )}
+            {t.rounds.length > 1 && (
+              <button className="btn sm" onClick={() => { if (confirm(`Annuler le tour ${round.n} et revenir au tour ${round.n - 1} ?`)) onChange(cancelLastRound(t)); }}>
+                ↩ Annuler ce tour
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {table && (
+        <div className="card">
+          <h2>Classement{over ? ' final' : ''}</h2>
+          <table className="stand">
+            <thead>
+              <tr><th></th><th style={{ textAlign: 'left' }}>Joueur</th><th>V</th><th>D</th><th title="Buchholz : somme des victoires des adversaires rencontrés">Buch.</th></tr>
+            </thead>
+            <tbody>
+              {table.map(s => (
+                <tr key={s.id} className={s.rank === 1 && over ? 'first' : ''}>
+                  <td className="rank">{medal(s.rank)}</td>
+                  <td style={{ textAlign: 'left', fontWeight: 700 }}>{nameOf(s.id)}</td>
+                  <td>{s.wins}</td>
+                  <td>{s.losses}</td>
+                  <td className="muted">{s.buchholz}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="muted" style={{ marginTop: 8 }}>Départage : victoires, puis Buchholz (force des adversaires), puis confrontation directe.</p>
+        </div>
+      )}
 
       {t.rounds.length > 1 && (
         <div className="card">
@@ -112,12 +146,14 @@ export function TournamentView({ t, onChange, onBack, onDelete }: Props) {
         </div>
       )}
 
-      <div className="card">
-        <h2>Joueurs</h2>
-        <div className="chips">
-          {t.players.map(p => <span key={p.id} className={`chip${outSet.has(p.id) ? ' out' : ''}`}>{p.name}</span>)}
+      {!swiss && (
+        <div className="card">
+          <h2>Joueurs</h2>
+          <div className="chips">
+            {t.players.map(p => <span key={p.id} className={`chip${outSet.has(p.id) ? ' out' : ''}`}>{p.name}</span>)}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="row" style={{ justifyContent: 'flex-end' }}>
         <button className="btn danger sm" onClick={() => { if (confirm(`Supprimer « ${t.name} » ?`)) onDelete(); }}>Supprimer le tournoi</button>

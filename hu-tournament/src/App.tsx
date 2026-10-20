@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NewTournament } from './components/NewTournament';
 import { TournamentView } from './components/TournamentView';
-import { type Tournament, createTournament, loadTournaments, saveTournaments, champion } from './lib/tournament';
+import { type Tournament, createTournament, loadTournaments, saveTournaments, champion, finished, FORMAT_LABEL } from './lib/tournament';
 
 type View = { kind: 'list' } | { kind: 'new' } | { kind: 'show'; id: string };
 
@@ -23,15 +23,15 @@ export default function App() {
         <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}logo-ppc.jpg`} alt="PPC" /></a>
         <div>
           <h1>{current ? current.name : 'Tournoi HU'}</h1>
-          <div className="sub">{current ? 'Élimination directe' : 'Organisation de tournois heads-up'}</div>
+          <div className="sub">{current ? FORMAT_LABEL[current.format] : 'Organisation de tournois heads-up'}</div>
         </div>
       </div>
 
       {view.kind === 'new' && (
         <NewTournament
           onCancel={() => setView({ kind: 'list' })}
-          onCreate={(name, players) => {
-            const t = createTournament(name, players);
+          onCreate={(name, players, format, rounds) => {
+            const t = createTournament(name, players, format, rounds);
             setList(l => [t, ...l]);
             setView({ kind: 'show', id: t.id });
           }}
@@ -49,16 +49,17 @@ export default function App() {
             <div className="tlist">
               {list.map(t => {
                 const c = champion(t);
+                const done = finished(t);
                 return (
                   <div className="titem" key={t.id} onClick={() => setView({ kind: 'show', id: t.id })}>
                     <div style={{ flex: 1 }}>
                       <div className="name">{t.name}</div>
                       <div className="muted">
-                        {t.players.length} joueurs · {new Date(t.createdAt).toLocaleDateString('fr-FR')}
+                        {FORMAT_LABEL[t.format]} · {t.players.length} joueurs · {new Date(t.createdAt).toLocaleDateString('fr-FR')}
                         {c && ` · 🏆 ${t.players.find(p => p.id === c)?.name}`}
                       </div>
                     </div>
-                    <span className={`status ${c ? 'done' : 'live'}`}>{c ? 'Terminé' : `Tour ${t.rounds.length}`}</span>
+                    <span className={`status ${done ? 'done' : 'live'}`}>{done ? 'Terminé' : `Tour ${t.rounds.length}`}</span>
                   </div>
                 );
               })}

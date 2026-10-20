@@ -69,3 +69,17 @@ details summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; padding:
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font-size: 0.78rem; padding: 4px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); }
 .chip.out { opacity: .45; text-decoration: line-through; }
+
+/* Format choice */
+.fmt { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fmt-btn { text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.fmt-btn span { font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
+.fmt-btn.on { border-color: var(--gold); background: #2b2410; }
+@media (max-width: 480px) { .fmt { grid-template-columns: 1fr; } }
+
+/* Standings */
+.stand { width: 100%; border-collapse: collapse; }
+.stand th { font-size: 0.66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 4px 6px; text-align: center; }
+.stand td { padding: 8px 6px; text-align: center; border-top: 1px solid var(--border); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.stand td.rank { width: 36px; }
+.stand tr.first td { color: var(--gold); }
