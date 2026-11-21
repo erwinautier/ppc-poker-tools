@@ -15,9 +15,13 @@ function normalizeAssignment(assignment: HandAssignment): HandAssignment {
 
 /** Migration des ranges créées avant l'ajout de nouveaux champs */
 function migrateRange(r: Range): Range {
+  // Drop frequencies on colors that are no longer in the palette (left behind
+  // by older versions when an action was deleted).
+  const ids = new Set((r.palette ?? []).map(p => p.id));
   const hands: Record<string, HandAssignment> = {};
   for (const [k, v] of Object.entries(r.hands ?? {})) {
-    hands[k] = normalizeAssignment(v);
+    const kept = Object.fromEntries(Object.entries(v).filter(([id]) => ids.has(id)));
+    if (Object.keys(kept).length > 0) hands[k] = normalizeAssignment(kept);
   }
   return {
     ...r,

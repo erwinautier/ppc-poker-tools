@@ -113,7 +113,16 @@ function AppInner() {
   };
 
   const handlePaletteChange = (palette: Range['palette']) => {
-    updateRange({ palette });
+    // Removing an action must also remove it from every hand, otherwise the
+    // hand keeps a frequency on a color that no longer exists (invisible in the
+    // grid, but still "in range" for the trainer).
+    const ids = new Set(palette.map(p => p.id));
+    const hands: Range['hands'] = {};
+    for (const [hand, assignment] of Object.entries(selectedRange?.hands ?? {})) {
+      const kept = Object.fromEntries(Object.entries(assignment).filter(([id, f]) => ids.has(id) && f > 0));
+      if (Object.keys(kept).length > 0) hands[hand] = kept;
+    }
+    updateRange({ palette, hands });
     if (!palette.find(p => p.id === activeColorId) && palette.length > 0) {
       setActiveColorId(palette[0].id);
     }

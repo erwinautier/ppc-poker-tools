@@ -34,6 +34,7 @@ export function deleteRange(id: string): SavedRange[] {
 
 interface RERange {
   id: string; title: string; position: string; players: number; stackBB: number;
+  palette?: { id: string }[];
   hands: Record<string, Record<string, number>>;
 }
 
@@ -45,8 +46,10 @@ export function loadEditorRanges(): SavedRange[] {
     const parsed = JSON.parse(raw) as { ranges?: RERange[] };
     if (!Array.isArray(parsed.ranges)) return [];
     return parsed.ranges.map(r => {
+      // Only colors still in the palette count (a deleted action leaves orphan frequencies).
+      const ids = new Set((r.palette ?? []).map(p => p.id));
       const hands = Object.entries(r.hands ?? {})
-        .filter(([, a]) => Object.values(a).some(f => f > 0))
+        .filter(([, a]) => Object.entries(a).some(([id, f]) => ids.has(id) && f > 0))
         .map(([h]) => h);
       return {
         id: `re-${r.id}`,

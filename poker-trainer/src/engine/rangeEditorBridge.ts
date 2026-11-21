@@ -39,13 +39,22 @@ export interface REState {
 const RE_STORAGE_KEY = 'range-editor-v1';
 
 function migrateRange(r: RERange): RERange {
+  // Ignore frequencies on colors that are no longer in the palette (an action
+  // deleted in the Range Editor): such a hand must count as a fold.
+  const palette = r.palette ?? [];
+  const ids = new Set(palette.map(p => p.id));
+  const hands: RERange['hands'] = {};
+  for (const [k, v] of Object.entries(r.hands ?? {})) {
+    const kept = Object.fromEntries(Object.entries(v).filter(([id, f]) => ids.has(id) && f > 0));
+    if (Object.keys(kept).length > 0) hands[k] = kept;
+  }
   return {
     ...r,
     rangeType: r.rangeType ?? 'open',
     actionSequence: r.actionSequence ?? [],
     notes: r.notes ?? '',
-    hands: r.hands ?? {},
-    palette: r.palette ?? [],
+    hands,
+    palette,
   };
 }
 
