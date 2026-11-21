@@ -83,3 +83,14 @@ details summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; padding:
 .stand td { padding: 8px 6px; text-align: center; border-top: 1px solid var(--border); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
 .stand td.rank { width: 36px; }
 .stand tr.first td { color: var(--gold); }
+
+/* Standings details */
+.stand tr.clickable { cursor: pointer; }
+.stand tr.clickable:hover td { background: var(--surface2); }
+.stand tr.detail td { background: var(--bg); text-align: left; padding: 8px 10px 10px 36px; font-size: 0.82rem; }
+.enc { display: flex; gap: 8px; padding: 3px 0; }
+.enc .w { color: var(--green); }
+.enc .l { color: var(--text-muted); }
+.enc.total { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; }
+.playoff-box { background: #2b2410; border: 1px solid var(--gold); border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; margin-top: 8px; }
+@media (max-width: 480px) { .stand td, .stand th { padding-left: 3px; padding-right: 3px; } .stand tr.detail td { padding-left: 12px; } }
