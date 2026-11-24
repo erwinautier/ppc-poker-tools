@@ -109,7 +109,7 @@ export default function RangeGrid({
           const actions: Action[] = (hands[key] as Action[] | undefined) ?? [];
           const isHigh  = key === highlightKey;
           const bg      = isHigh ? ACTION_COLORS.fold.bg : cellBg(actions);
-          const textCol = isHigh ? '#fbbf24' : '#fff';
+          const textCol = isHigh ? 'var(--ppc-or)' : '#fff';
 
           return (
             <div
@@ -118,7 +118,7 @@ export default function RangeGrid({
               title={key + (actions.length > 0 ? ': ' + actions.join(', ') : ': fold')}
               style={{
                 background:     bg,
-                border:         isHigh ? '2px solid #fbbf24' : '1px solid #0f172a',
+                border:         isHigh ? '2px solid var(--ppc-or)' : '1px solid var(--bg)',
                 borderRadius:   2,
                 aspectRatio:    '1',
                 display:        'flex',

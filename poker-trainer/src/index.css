@@ -1,15 +1,8 @@
 @import "tailwindcss";
+@import "../../shared/ppc-da.css";
 
 :root {
-  --bg:          #0f1117;
-  --surface:     #1a1f2e;
-  --surface2:    #242b3d;
-  --border:      #2e3650;
-  --text:        #e8eaf0;
-  --text-muted:  #7a8299;
-  --accent:      #4f7ef8;
-  --accent-hover:#6b94ff;
-  --danger:      #ef4444;
+  /* Couleurs et polices : shared/ppc-da.css (DA du club) */
   --radius:      6px;
   --header-h:    52px;
   --nav-h:       56px;
@@ -25,7 +18,7 @@ html { font-size: var(--font-size); }
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-text);
     font-size: 1rem;
     line-height: 1.5;
     min-height: 100dvh;

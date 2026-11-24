@@ -20,7 +20,7 @@ function cellBackground(assignment: HandAssignment, palette: PaletteColor[], isP
     .filter(Boolean) as { hex: string; freq: number }[];
 
   // Fond de base : légèrement plus clair pour les paires (diagonale)
-  const baseBg = isPair ? '#252d40' : '#1e2433';
+  const baseBg = isPair ? '#44204c' : '#33103a'; // fond des cases sans action (DA du club)
 
   if (entries.length === 0) return baseBg;
 

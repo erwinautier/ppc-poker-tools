@@ -44,7 +44,7 @@ function HandCard({ rank, symbol, isRed }: { rank: string; symbol: string; isRed
 }
 
 function PctBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+  const color = pct >= 80 ? 'var(--success)' : pct >= 60 ? 'var(--gold)' : 'var(--danger)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 3, overflow: 'hidden' }}>
@@ -358,8 +358,8 @@ function SelectStep({
                 onClick={() => onProximityChange(opt.value)}
                 style={{
                   width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
-                  background: active ? 'rgba(79,126,248,0.12)' : 'transparent',
-                  border: `1px solid ${active ? 'rgba(79,126,248,0.4)' : 'transparent'}`,
+                  background: active ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
+                  border: `1px solid ${active ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'transparent'}`,
                   borderRadius: 7, padding: '8px 10px', cursor: 'pointer', transition: 'all 0.12s',
                 }}
               >
@@ -427,8 +427,8 @@ function SelectStep({
                       onClick={() => toggleCol(col.rangeIds)}
                       className="range-row"
                       style={{
-                        background: allSel ? 'rgba(79,126,248,0.07)' : 'var(--surface)',
-                        borderColor: allSel ? 'rgba(79,126,248,0.35)' : someSel ? 'rgba(245,158,11,0.3)' : 'var(--border)',
+                        background: allSel ? 'color-mix(in srgb, var(--accent) 7%, transparent)' : 'var(--surface)',
+                        borderColor: allSel ? 'color-mix(in srgb, var(--accent) 35%, transparent)' : someSel ? 'color-mix(in srgb, var(--gold) 30%, transparent)' : 'var(--border)',
                       }}
                     >
                       <Checkbox checked={allSel} indeterminate={!allSel && someSel} />
@@ -476,9 +476,9 @@ function Checkbox({ checked, indeterminate }: { checked: boolean; indeterminate?
     <span style={{
       width: 16, height: 16, borderRadius: 4, flexShrink: 0,
       border: `2px solid ${checked || indeterminate ? 'var(--accent)' : 'var(--border)'}`,
-      background: checked ? 'var(--accent)' : indeterminate ? 'rgba(79,126,248,0.3)' : 'transparent',
+      background: checked ? 'var(--accent)' : indeterminate ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'transparent',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 10, color: '#fff', fontWeight: 700,
+      fontSize: 10, color: 'var(--on-accent)', fontWeight: 700,
     }}>
       {checked ? '✓' : indeterminate ? '–' : ''}
     </span>
@@ -577,7 +577,7 @@ function TrainingSession({
             {sessionPct !== null && (
               <span style={{
                 fontSize: '0.75rem', fontWeight: 700,
-                color: sessionPct >= 80 ? '#22c55e' : sessionPct >= 60 ? '#f59e0b' : '#ef4444',
+                color: sessionPct >= 80 ? 'var(--success)' : sessionPct >= 60 ? 'var(--gold)' : 'var(--danger)',
               }}>{correct}/{attempts} — {sessionPct}%</span>
             )}
             <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: '0.75rem' }} onClick={onEnd}>
@@ -611,7 +611,7 @@ function TrainingSession({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <button
             onClick={() => handleAnswer('fold')}
-            style={{ background: 'var(--surface2)', color: '#94a3b8', border: '1px solid var(--border)', borderRadius: 10, padding: '11px', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer' }}
+            style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer' }}
           >
             Fold
           </button>
@@ -653,10 +653,10 @@ function TrainingSession({
       {/* Result banner */}
       <div style={{
         borderRadius: 10, padding: '12px 14px',
-        background: isCorrect ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-        border: `1px solid ${isCorrect ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}`,
+        background: isCorrect ? 'var(--success-bg)' : 'var(--danger-bg)',
+        border: `1px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}`,
       }}>
-        <div style={{ fontSize: '1rem', fontWeight: 800, color: isCorrect ? '#22c55e' : '#f87171' }}>
+        <div style={{ fontSize: '1rem', fontWeight: 800, color: isCorrect ? 'var(--success)' : 'var(--danger)' }}>
           {isCorrect ? '✓ Correct !' : '✗ Incorrect'}
         </div>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
@@ -713,7 +713,7 @@ function TrainingSession({
       {/* Score + next */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          Session : <strong style={{ color: sessionPct !== null && sessionPct >= 80 ? '#22c55e' : sessionPct !== null && sessionPct >= 60 ? '#f59e0b' : '#ef4444' }}>
+          Session : <strong style={{ color: sessionPct !== null && sessionPct >= 80 ? 'var(--success)' : sessionPct !== null && sessionPct >= 60 ? 'var(--gold)' : 'var(--danger)' }}>
             {correct}/{attempts}{sessionPct !== null ? ` = ${sessionPct}%` : ''}
           </strong>
         </span>

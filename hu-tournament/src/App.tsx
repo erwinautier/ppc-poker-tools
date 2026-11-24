@@ -20,7 +20,7 @@ export default function App() {
   return (
     <div className="page">
       <div className="header">
-        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}logo-ppc.jpg`} alt="PPC" /></a>
+        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" /></a>
         <div>
           <h1>{current ? current.name : 'Tournoi HU'}</h1>
           <div className="sub">{current ? FORMAT_LABEL[current.format] : 'Organisation de tournois heads-up'}</div>

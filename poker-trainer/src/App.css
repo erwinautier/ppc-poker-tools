@@ -37,7 +37,7 @@
   white-space: nowrap;
 }
 .pill.active {
-  background: rgba(79,126,248,0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -61,10 +61,10 @@
   white-space: nowrap;
 }
 .btn:hover { background: var(--border); }
-.btn-primary { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+.btn-primary { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--on-accent) !important; }
 .btn-primary:hover { background: var(--accent-hover) !important; border-color: var(--accent-hover) !important; }
-.btn-primary:disabled { background: rgba(79,126,248,0.25) !important; border-color: transparent !important; cursor: not-allowed; opacity: 0.6; }
-.btn-danger { background: rgba(239,68,68,0.08) !important; border-color: rgba(239,68,68,0.3) !important; color: var(--danger) !important; }
+.btn-primary:disabled { background: color-mix(in srgb, var(--accent) 25%, transparent) !important; border-color: transparent !important; cursor: not-allowed; opacity: 0.6; }
+.btn-danger { background: var(--danger-bg) !important; border-color: color-mix(in srgb, var(--danger) 30%, transparent) !important; color: var(--danger) !important; }
 .btn-ghost { background: transparent !important; border-color: transparent !important; color: var(--text-muted) !important; }
 .btn-ghost:hover { background: var(--surface2) !important; color: var(--text) !important; }
 .btn-full { width: 100%; }
@@ -85,8 +85,8 @@
 }
 .range-row:hover { background: var(--surface2); }
 .range-row.checked {
-  background: rgba(79,126,248,0.07);
-  border-color: rgba(79,126,248,0.35);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 /* ── Spacing ── */

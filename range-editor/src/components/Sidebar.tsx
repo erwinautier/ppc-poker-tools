@@ -1,6 +1,6 @@
 import type { AppState, Range } from '../types';
 import { newRange, newCollection } from '../store';
-import { Plus, FolderPlus, Trash2, ChevronRight, ChevronDown, FolderOpen, Copy } from 'lucide-react';
+import { Plus, FolderPlus, Trash2, ChevronRight, FolderOpen, Copy } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -173,9 +173,20 @@ export default function Sidebar({ state, selectedRangeId, onSelectRange, onState
         {/* Collections */}
         {state.collections.map(col => (
           <div key={col.id} className="collection">
-            <div className="collection-header" onClick={() => toggleExpand(col.id)}>
-              {expandedCollections.has(col.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              <FolderOpen size={14} />
+            <div
+              className="collection-header"
+              onClick={() => toggleExpand(col.id)}
+              role="button"
+              aria-expanded={expandedCollections.has(col.id)}
+            >
+              <span
+                className={`collection-toggle${expandedCollections.has(col.id) ? ' open' : ''}`}
+                title={expandedCollections.has(col.id) ? 'Replier la collection' : 'Déplier la collection'}
+                aria-hidden="true"
+              >
+                <ChevronRight size={18} strokeWidth={3} />
+              </span>
+              <FolderOpen size={15} className="collection-folder" />
               <input
                 className="collection-title-input"
                 value={col.title}

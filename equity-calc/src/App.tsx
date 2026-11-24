@@ -155,7 +155,7 @@ export default function App() {
   return (
     <div className="page">
       <div className="header">
-        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}logo-ppc.jpg`} alt="PPC" /></a>
+        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" /></a>
         <div>
           <h1>Calculateur d'équité</h1>
           <div className="sub">Range vs range · Monte Carlo · NLHE</div>

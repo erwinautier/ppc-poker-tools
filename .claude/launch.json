@@ -69,6 +69,30 @@
       ],
       "port": 5177,
       "autoPort": true
+    },
+    {
+      "name": "initiation",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "initiation",
+        "run",
+        "dev"
+      ],
+      "port": 5178,
+      "autoPort": true
+    },
+    {
+      "name": "suite-dist",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5190",
+        "--directory",
+        "dist"
+      ],
+      "port": 5190
     }
   ]
 }
