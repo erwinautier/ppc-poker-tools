@@ -168,6 +168,26 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-text);
 }
 .collection-header:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
 
+/* Bouton de dépliage : carré turquoise, flèche qui pivote quand la collection est ouverte */
+.collection-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  transition: background 0.15s, color 0.15s;
+}
+.collection-toggle svg { transition: transform 0.18s ease; }
+.collection-toggle.open { background: var(--accent); color: var(--on-accent); }
+.collection-toggle.open svg { transform: rotate(90deg); }
+.collection-header:hover .collection-toggle:not(.open) { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
+.collection-folder { color: var(--gold); flex-shrink: 0; }
+
 .collection-title-input {
   flex: 1;
   background: transparent;

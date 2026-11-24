@@ -98,14 +98,21 @@ export default function PokerTableView({ range }: Props) {
   const seats = computeSeats(range);
   const hero = seats.find(s => s.isHero);
 
-  const SEAT_W = 70, SEAT_H = 36;
+  const SEAT_W = 76, SEAT_H = 42;
 
   return (
     <svg viewBox="0 0 520 400" style={{ width: '100%', maxWidth: 460, display: 'block', margin: '0 auto' }} role="img">
       <title>Table de poker</title>
       <ellipse cx={260} cy={190} rx={210} ry={130} fill="var(--surface2)" stroke="var(--ppc-corail)" strokeWidth={5} />
-      <text x={260} y={120} textAnchor="middle" fill="var(--text)" fontSize={12} fontFamily="Montserrat, system-ui, sans-serif">
-        {range.players}-max · {range.stackBB} BB
+      {/* Tapis : l'information clé de la décision, bien visible au centre */}
+      <text x={260} y={150} textAnchor="middle" fill="var(--text-muted)" fontSize={14} fontWeight={600} fontFamily="Montserrat, system-ui, sans-serif" letterSpacing="0.08em">
+        TAPIS
+      </text>
+      <text x={260} y={196} textAnchor="middle" fill="var(--ppc-or)" fontSize={44} fontFamily="Bungee, Montserrat, system-ui, sans-serif">
+        {range.stackBB} BB
+      </text>
+      <text x={260} y={222} textAnchor="middle" fill="var(--text)" fontSize={15} fontWeight={600} fontFamily="Montserrat, system-ui, sans-serif">
+        {range.players}-max
       </text>
 
       {seats.map(seat => {
@@ -128,16 +135,16 @@ export default function PokerTableView({ range }: Props) {
               strokeWidth={seat.isHero || seat.action ? 2 : 1.5}
             />
             <text
-              x={seat.x} y={seat.y - 4} textAnchor="middle"
+              x={seat.x} y={seat.y - 5} textAnchor="middle"
               fill={seat.isHero ? 'var(--ppc-prune)' : 'var(--text)'}
               fontWeight={700} fontSize={12} fontFamily="Montserrat, system-ui, sans-serif"
             >
               {seat.position}{seat.isHero ? ' (vous)' : ''}
             </text>
             <text
-              x={seat.x} y={seat.y + 11} textAnchor="middle"
-              fill={seat.isHero ? 'var(--ppc-prune)' : 'var(--text-muted)'}
-              fontSize={10} fontFamily="Montserrat, system-ui, sans-serif"
+              x={seat.x} y={seat.y + 13} textAnchor="middle"
+              fill={seat.isHero ? 'var(--ppc-prune)' : 'var(--ppc-or)'}
+              fontWeight={700} fontSize={14} fontFamily="Montserrat, system-ui, sans-serif"
             >
               {range.stackBB} BB
             </text>
