@@ -11,7 +11,7 @@ interface Props {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <div style={{ color: '#64748b', fontSize: 11, marginBottom: 5 }}>{children}</div>;
+  return <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 5 }}>{children}</div>;
 }
 
 function ToggleGroup({ children }: { children: React.ReactNode }) {
@@ -54,9 +54,9 @@ function Chip({
     <button
       onClick={onClick}
       style={{
-        background: active ? (color ?? '#16a34a') : 'rgba(255,255,255,0.06)',
-        color: '#fff',
-        border: `1px solid ${active ? (color ?? '#16a34a') : 'rgba(255,255,255,0.12)'}`,
+        background: active ? (color ?? 'var(--ppc-turquoise)') : 'rgba(255,255,255,0.06)',
+        color: active ? 'var(--ppc-prune)' : 'var(--text)',
+        border: `1px solid ${active ? (color ?? 'var(--ppc-turquoise)') : 'rgba(255,255,255,0.12)'}`,
         borderRadius: 6,
         padding: '3px 10px',
         fontSize: 11,
@@ -91,7 +91,7 @@ export default function ContextSelector({ ctx, onChange, compact = false }: Prop
         <ToggleGroup>
           {(['6max', '8max'] as GameFormat[]).map(f => (
             <Chip key={f} label={f === '6max' ? '6-max' : '8-max'} active={ctx.format === f}
-              onClick={() => update({ format: f })} color="#16a34a" />
+              onClick={() => update({ format: f })} color="var(--ppc-turquoise)" />
           ))}
         </ToggleGroup>
       </div>
@@ -105,7 +105,7 @@ export default function ContextSelector({ ctx, onChange, compact = false }: Prop
             onChange={e => update({ stack: Number(e.target.value) as StackDepth })}
             style={{
               background: 'rgba(255,255,255,0.07)',
-              color: '#fff',
+              color: 'var(--text)',
               border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: 6,
               padding: '4px 8px',
@@ -114,7 +114,7 @@ export default function ContextSelector({ ctx, onChange, compact = false }: Prop
             }}
           >
             {STACK_DEPTHS.map(s => (
-              <option key={s} value={s} style={{ background: '#0f172a' }}>{s} bb</option>
+              <option key={s} value={s} style={{ background: 'var(--surface)' }}>{s} bb</option>
             ))}
           </select>
         </div>
@@ -126,7 +126,7 @@ export default function ContextSelector({ ctx, onChange, compact = false }: Prop
         <ToggleGroup>
           {SCENARIOS.map(s => (
             <Chip key={s} label={SCENARIO_LABELS[s]} active={ctx.scenario === s}
-              onClick={() => update({ scenario: s as Scenario })} color="#7c3aed" />
+              onClick={() => update({ scenario: s as Scenario })} color="var(--ppc-corail)" />
           ))}
         </ToggleGroup>
       </div>
@@ -146,7 +146,7 @@ export default function ContextSelector({ ctx, onChange, compact = false }: Prop
         <div>
           <Label>Position de l'ouvreur</Label>
           {villains.length === 0 ? (
-            <p style={{ color: '#ef4444', fontSize: 11 }}>
+            <p style={{ color: 'var(--danger)', fontSize: 11 }}>
               Aucune position valide — l'ouvreur doit agir avant vous.
             </p>
           ) : (

@@ -80,10 +80,10 @@ export default function DataPage({ username }: { username?: string }) {
       {/* Message toast */}
       {message && (
         <div style={{
-          background: message.ok ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-          border: `1px solid ${message.ok ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}`,
+          background: message.ok ? 'var(--success-bg)' : 'var(--danger-bg)',
+          border: `1px solid ${message.ok ? 'var(--success)' : 'var(--danger)'}`,
           borderRadius: 8, padding: '10px 14px',
-          color: message.ok ? '#22c55e' : '#f87171',
+          color: message.ok ? 'var(--success)' : 'var(--danger)',
           fontSize: '0.8rem', fontWeight: 600,
         }}>
           {message.text}

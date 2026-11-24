@@ -7,12 +7,19 @@ import type { Fiche, FicheBlock, Lesson } from '../content/types';
 import type { Term } from '../content/lexique';
 import { cards as parseCards, rankLabel } from './cards';
 
-const INK: [number, number, number] = [26, 31, 46];
-const MUTED: [number, number, number] = [110, 118, 138];
-const ACCENT: [number, number, number] = [47, 88, 205];
-const GOLD: [number, number, number] = [184, 134, 11];
-const LINE: [number, number, number] = [221, 225, 234];
-const SOFT: [number, number, number] = [243, 245, 250];
+// Couleurs de la DA du club (palette A « Vice City »), adaptées à l'impression sur blanc.
+type RGB = [number, number, number];
+const PRUNE: RGB = [38, 8, 45];
+const IVOIRE: RGB = [255, 242, 220];
+const OR: RGB = [242, 184, 26];
+const CORAIL: RGB = [255, 77, 112];
+const TURQUOISE: RGB = [15, 198, 204];
+const INK: RGB = PRUNE;
+const MUTED: RGB = [125, 90, 116];
+const ACCENT: RGB = [216, 40, 82];      // corail assombri : lisible en petit texte
+const GOLD: RGB = [196, 140, 0];
+const LINE: RGB = [236, 220, 196];
+const SOFT: RGB = [255, 249, 238];
 const SUIT_RGB: Record<string, [number, number, number]> = { s: [26, 31, 46], h: [220, 38, 38], d: [37, 99, 235], c: [21, 128, 61] };
 
 const W = 210, H = 297, M = 16, CW = W - 2 * M;
@@ -31,7 +38,7 @@ let logoCache: string | null | undefined;
 async function logo(): Promise<string | null> {
   if (logoCache !== undefined) return logoCache;
   try {
-    const r = await fetch(`${import.meta.env.BASE_URL}logo-ppc.jpg`);
+    const r = await fetch(`${import.meta.env.BASE_URL}logo-ppc.png`);
     const b = await r.blob();
     logoCache = await new Promise<string>(res => { const fr = new FileReader(); fr.onloadend = () => res(fr.result as string); fr.readAsDataURL(b); });
   } catch { logoCache = null; }
@@ -58,8 +65,8 @@ class Writer {
   section(title: string) {
     this.ensure(14);
     this.y += 4;
-    this.doc.setFillColor(...ACCENT); this.doc.rect(M, this.y - 3.4, 1.4, 4.4, 'F');
-    this.text(title.toUpperCase(), M + 3.5, 9.5, 'bold', ACCENT);
+    this.doc.setFillColor(...CORAIL); this.doc.rect(M, this.y - 3.4, 1.4, 4.4, 'F');
+    this.text(title.toUpperCase(), M + 3.5, 9.5, 'bold', PRUNE);
     this.y += 6;
   }
   bullets(items: string[], mark = '•', color = INK) {
@@ -117,7 +124,7 @@ function block(wr: Writer, b: FicheBlock) {
     b.steps.forEach((s, i) => {
       const lines = wr.wrap(s, CW - 9);
       wr.ensure(lines.length * 4.6 + 2);
-      doc.setFillColor(...SOFT); doc.setDrawColor(...ACCENT); doc.setLineWidth(0.3);
+      doc.setFillColor(...IVOIRE); doc.setDrawColor(...OR); doc.setLineWidth(0.4);
       doc.circle(M + 2.6, wr.y - 1.3, 2.4, 'FD');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...ACCENT);
       doc.text(String(i + 1), M + 2.6, wr.y - 0.2, { align: 'center' });
@@ -155,11 +162,11 @@ function block(wr: Writer, b: FicheBlock) {
     const size = header ? 8.5 : 9;
     const h = rowH(cells, size, header);
     wr.ensure(h);
-    if (header || zebra) { doc.setFillColor(...(header ? [230, 236, 250] as [number, number, number] : SOFT)); doc.rect(M, wr.y - 3.6, CW, h, 'F'); }
+    if (header || zebra) { doc.setFillColor(...(header ? IVOIRE : SOFT)); doc.rect(M, wr.y - 3.6, CW, h, 'F'); }
     let x = M;
     cells.forEach((c, i) => {
       const lines = wr.wrap(c, ws[i] - 3, size, header ? 'bold' : 'normal');
-      doc.setFont('helvetica', header ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...(header ? ACCENT : INK));
+      doc.setFont('helvetica', header ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...INK);
       lines.forEach((l, k) => doc.text(l, x + 1.5, wr.y + k * 4.1));
       x += ws[i];
     });
@@ -176,7 +183,7 @@ function block(wr: Writer, b: FicheBlock) {
 async function header(wr: Writer, kicker: string, title: string, subtitle: string) {
   const { doc } = wr;
   const lg = await logo();
-  if (lg) doc.addImage(lg, 'JPEG', M, M - 2, 15, 15);
+  if (lg) doc.addImage(lg, 'PNG', M, M - 2, 15, 15);
   const tx = lg ? M + 19 : M;
   wr.y = M + 2;
   wr.text(kicker, tx, 8.5, 'bold', MUTED);
@@ -190,10 +197,16 @@ async function header(wr: Writer, kicker: string, title: string, subtitle: strin
   wr.y += 5;
 }
 
+/** La frise des cinq couleurs du club. */
+function stripe(doc: jsPDF, x: number, y: number, w: number, h: number) {
+  [PRUNE, IVOIRE, OR, CORAIL, TURQUOISE].forEach((c, i) => { doc.setFillColor(...c); doc.rect(x + (i * w) / 5, y, w / 5, h, 'F'); });
+}
+
 function footers(doc: jsPDF) {
   const n = doc.getNumberOfPages();
   for (let i = 1; i <= n; i++) {
     doc.setPage(i);
+    stripe(doc, M, H - 7, CW, 1.6);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED);
     doc.text(latin('Penthièvre Poker Club · Initiation au No Limit Hold’em'), M, H - 9);
     doc.text(`${i} / ${n}`, W - M, H - 9, { align: 'right' });
@@ -254,19 +267,22 @@ export async function downloadAllFiches(items: { lesson: Lesson; moduleTitle: st
 export async function downloadAttestation(name: string, avg: number) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   const w = 297, h = 210;
-  doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.rect(10, 10, w - 20, h - 20);
-  doc.setLineWidth(0.4); doc.rect(14, 14, w - 28, h - 28);
+  doc.setFillColor(...SOFT); doc.rect(0, 0, w, h, 'F');
+  doc.setDrawColor(...PRUNE); doc.setLineWidth(1.4); doc.rect(10, 10, w - 20, h - 20);
+  doc.setDrawColor(...OR); doc.setLineWidth(0.5); doc.rect(14, 14, w - 28, h - 28);
+  stripe(doc, 14, h - 20, w - 28, 2.2);
   const lg = await logo();
-  if (lg) doc.addImage(lg, 'JPEG', w / 2 - 14, 24, 28, 28);
+  if (lg) doc.addImage(lg, 'PNG', w / 2 - 14, 24, 28, 28);
   const c = (s: string, y: number, size: number, style: 'normal' | 'bold' | 'italic' = 'normal', col = INK) => {
     doc.setFont('helvetica', style); doc.setFontSize(size); doc.setTextColor(...col);
     doc.text(latin(s), w / 2, y, { align: 'center' });
   };
   c('PENTHIÈVRE POKER CLUB', 64, 11, 'bold', MUTED);
-  c('Attestation d’initiation', 80, 30, 'bold');
+  c('ATTESTATION D’INITIATION', 80, 28, 'bold', PRUNE);
   c('au No Limit Texas Hold’em', 91, 16, 'normal', MUTED);
   c('décernée à', 108, 12, 'italic', MUTED);
   c(name || '________________________', 123, 26, 'bold', ACCENT);
+  doc.setDrawColor(...OR); doc.setLineWidth(0.6); doc.line(w / 2 - 60, 128, w / 2 + 60, 128);
   c(`pour avoir validé les 19 leçons du parcours d’initiation (score moyen : ${Math.round(avg * 100)} %).`, 138, 12);
   c('Le but du jeu · Les combinaisons · Le déroulement d’une main · Le préflop · Le postflop · Repères et vocabulaire', 148, 9.5, 'normal', MUTED);
   c(`Le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, 172, 11);

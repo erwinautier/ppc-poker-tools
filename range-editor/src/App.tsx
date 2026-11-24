@@ -23,9 +23,9 @@ function loadFont(): MatrixFont {
 function SyncBadge({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
   if (status === 'idle') return null;
   const map = {
-    saving: { label: 'Sauvegarde…', color: '#7a8299' },
-    saved:  { label: '✓ Sauvegardé', color: '#4ade80' },
-    error:  { label: '⚠ Erreur sync', color: '#f87171' },
+    saving: { label: 'Sauvegarde…', color: 'var(--text-muted)' },
+    saved:  { label: '✓ Sauvegardé', color: 'var(--success)' },
+    error:  { label: '⚠ Erreur sync', color: 'var(--danger)' },
   } as const;
   const { label, color } = map[status];
   return (
@@ -136,7 +136,7 @@ function AppInner() {
         </button>
         <div className="app-logo">
           <a href="/" title="Accueil" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
-            <img src={`${import.meta.env.BASE_URL}logo-ppc.jpg`} alt="PPC" className="header-logo" />
+            <img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" className="header-logo" />
             <span className="header-title">Range Editor</span>
           </a>
         </div>

@@ -10,7 +10,7 @@ const BASE = import.meta.env.BASE_URL;
 export function Header({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="header">
-      <a href="/" title="Toutes les applications du club"><img src={`${BASE}logo-ppc.jpg`} alt="PPC" /></a>
+      <a href="/" title="Toutes les applications du club"><img src={`${BASE}logo-ppc.png`} alt="PPC" /></a>
       <div className="grow">
         <h1>{title}</h1>
         <div className="sub">{sub}</div>
@@ -55,7 +55,7 @@ export function Parcours() {
         return (
           <div key={m.id} className="module">
             <button className="module-head" onClick={() => toggle(m.id)} aria-expanded={open}>
-              <span className="status-ico">{allDone ? '✅' : started ? '◐' : '○'}</span>
+              <span className={`status-ico ${allDone ? 'ok' : started ? 'on' : ''}`}>{allDone ? '✓' : started ? '◐' : '○'}</span>
               <div className="grow">
                 <div className="n">Module {m.id}</div>
                 <div className="t">{m.title}</div>

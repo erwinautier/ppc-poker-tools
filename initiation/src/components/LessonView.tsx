@@ -35,7 +35,7 @@ export function LessonView({ lesson, phase }: { lesson: Lesson; phase?: Phase })
         <button className="icon-btn" onClick={() => go({ name: 'parcours' })} aria-label="Retour au parcours">←</button>
         <div className="grow">
           <div className="lesson-kicker">Leçon {lesson.id} / {total}{lesson.bonus ? ' · bonus' : ''} · {mod.title}</div>
-          <h1 style={{ fontSize: '1.05rem' }}>{lesson.title}</h1>
+          <h1 className="lesson-title">{lesson.title}</h1>
         </div>
         {isValidated(p) && <span className="pill ok">✓ {Math.round((p.best ?? 0) * 100)} %</span>}
       </div>
@@ -114,7 +114,7 @@ function BilanPhase({ lesson }: { lesson: Lesson }) {
           <div className="recap">
             {shown.map(r => (
               <div key={r.id} className="recap-line">
-                <span className="m">{r.correct === true ? '✅' : r.correct === false ? '❌' : '•'}</span>
+                <span className={`m ${r.correct === true ? 'ok' : r.correct === false ? 'ko' : ''}`}>{r.correct === true ? '✓' : r.correct === false ? '✗' : '•'}</span>
                 <div>
                   <div>{r.insight}</div>
                   {r.correct === false && <div className="a">Ta réponse : {r.answer}{r.expected ? ` · attendu : ${r.expected}` : ''}</div>}
@@ -187,7 +187,7 @@ function TrainingPhase({ lesson }: { lesson: Lesson }) {
             {errors.map(({ r, i }) => (
               <div key={i} className="stack" style={{ gap: 8 }}>
                 <button className="opt" onClick={() => setOpen(open === i ? null : i)}>
-                  ❌ Exercice {i + 1} · <span style={{ color: 'var(--accent)' }}>{open === i ? 'Masquer' : 'Revoir'}</span>
+                  <span style={{ color: 'var(--danger)', fontWeight: 800 }}>✗</span> Exercice {i + 1} · <span style={{ color: 'var(--accent)' }}>{open === i ? 'Masquer' : 'Revoir'}</span>
                 </button>
                 {open === i && (
                   <div className="scene stack">

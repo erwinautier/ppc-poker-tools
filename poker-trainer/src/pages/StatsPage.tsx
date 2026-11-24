@@ -3,7 +3,7 @@ import { loadREStats, saveREStats, diagByPosition, diagByStack, diagByScenarioTy
 import { loadREState } from '../engine/rangeEditorBridge';
 
 function PctBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+  const color = pct >= 80 ? 'var(--success)' : pct >= 60 ? 'var(--gold)' : 'var(--danger)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 3, overflow: 'hidden' }}>

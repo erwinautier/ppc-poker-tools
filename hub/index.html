@@ -3,68 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#26082D" />
   <title>PPC Poker Tools</title>
+  <link rel="icon" type="image/png" href="logo-ppc.png" />
+  <link rel="apple-touch-icon" href="logo-ppc.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Copie de shared/ppc-da.css (le hub est une page autonome) : garder les deux en phase. */
     :root {
-      --bg:       #0f1117;
-      --surface:  #1a1f2e;
-      --surface2: #242b3d;
-      --border:   #2e3650;
-      --text:     #e8eaf0;
-      --muted:    #7a8299;
-      --accent:   #4f7ef8;
+      --ppc-prune:     #26082D;
+      --ppc-ivoire:    #FFF2DC;
+      --ppc-or:        #F2B81A;
+      --ppc-corail:    #FF4D70;
+      --ppc-turquoise: #0FC6CC;
+      --font-title: 'Bungee', 'Montserrat', system-ui, sans-serif;
+      --font-text:  'Montserrat', system-ui, -apple-system, sans-serif;
+      --bg:       #1c0521;
+      --surface:  #2a0a31;
+      --surface2: #38123f;
+      --border:   #512a5a;
+      --text:     var(--ppc-ivoire);
+      --muted:    #c4a8b9;
     }
 
     html, body {
       min-height: 100dvh;
       background: var(--bg);
       color: var(--text);
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: var(--font-text);
       -webkit-font-smoothing: antialiased;
     }
 
+    .stripe {
+      height: 6px;
+      background: linear-gradient(90deg,
+        var(--ppc-prune) 0 20%, var(--ppc-ivoire) 20% 40%, var(--ppc-or) 40% 60%,
+        var(--ppc-corail) 60% 80%, var(--ppc-turquoise) 80% 100%);
+    }
+
     .page {
-      min-height: 100dvh;
+      min-height: calc(100dvh - 12px);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 32px 16px;
+      padding: 40px 16px 32px;
     }
 
-    /* Header */
+    /* En-tête */
     .header {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 48px;
+      gap: 14px;
+      margin-bottom: 40px;
       text-align: center;
     }
     .logo {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      object-fit: cover;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      width: 132px;
+      height: 132px;
+      display: block;
+      filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+    }
+    .club {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ppc-corail);
     }
     .title {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.01em;
+      font-family: var(--font-title);
+      font-weight: 400;
+      font-size: 2.1rem;
+      line-height: 1;
+      color: var(--ppc-ivoire);
+      text-shadow: 3px 3px 0 var(--ppc-corail);
     }
-    .subtitle {
-      font-size: 0.85rem;
-      color: var(--muted);
+    .motto {
+      margin-top: 4px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ppc-or);
     }
 
-    /* App grid */
+    /* Grille des applications */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -73,23 +100,27 @@
       max-width: 580px;
     }
 
-    /* App card */
+    /* Carte d'application : --c = couleur de l'app, prise dans la palette du club */
     .app-card {
+      --c: var(--ppc-turquoise);
       display: block;
       text-decoration: none;
       background: var(--surface);
       border: 1px solid var(--border);
+      border-top: 5px solid var(--c);
       border-radius: 14px;
-      padding: 24px;
+      padding: 22px 24px 24px;
       transition: border-color 0.15s, background 0.15s, transform 0.15s;
       cursor: pointer;
     }
     .app-card:hover {
-      border-color: var(--accent);
+      border-color: var(--c);
       background: var(--surface2);
       transform: translateY(-2px);
     }
     .app-card:active { transform: translateY(0); }
+    .app-card.corail { --c: var(--ppc-corail); }
+    .app-card.or { --c: var(--ppc-or); }
 
     .app-icon {
       font-size: 2.2rem;
@@ -97,15 +128,15 @@
       margin-bottom: 14px;
     }
     .app-name {
-      font-size: 1.05rem;
-      font-weight: 700;
+      font-size: 1.1rem;
+      font-weight: 800;
       color: var(--text);
       margin-bottom: 6px;
     }
     .app-desc {
       font-size: 0.8rem;
       color: var(--muted);
-      line-height: 1.55;
+      line-height: 1.6;
       margin-bottom: 18px;
     }
     .app-tags {
@@ -131,45 +162,49 @@
       border-top: 1px solid var(--border);
     }
     .app-cta span {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--c);
     }
     .arrow {
       font-size: 1.1rem;
-      color: var(--accent);
+      color: var(--c);
       transition: transform 0.15s;
     }
     .app-card:hover .arrow { transform: translateX(4px); }
 
-    /* Footer */
+    /* Pied de page */
     .footer {
-      margin-top: 48px;
-      font-size: 0.72rem;
+      margin-top: 40px;
+      font-size: 0.74rem;
       color: var(--muted);
       text-align: center;
+      line-height: 1.6;
     }
 
     @media (max-width: 480px) {
-      .title { font-size: 1.25rem; }
+      .title { font-size: 1.7rem; }
+      .logo { width: 112px; height: 112px; }
       .grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+  <div class="stripe" aria-hidden="true"></div>
   <div class="page">
 
     <div class="header">
-      <img src="logo-ppc.jpg" alt="PPC" class="logo" />
+      <img src="logo-ppc.png" alt="Penthièvre Poker Club" class="logo" />
       <div>
+        <p class="club">Penthièvre Poker Club</p>
         <h1 class="title">Poker Tools</h1>
-        <p class="subtitle">Penthièvre Poker Club · NLHE</p>
+        <p class="motto">Apprends. Progresse. Partage.</p>
       </div>
     </div>
 
     <div class="grid">
 
-      <a href="/initiation/" class="app-card">
+      <a href="/initiation/" class="app-card corail">
         <div class="app-icon">🎓</div>
         <div class="app-name">Initiation</div>
         <p class="app-desc">
@@ -203,7 +238,7 @@
         </div>
       </a>
 
-      <a href="/trainer/" class="app-card">
+      <a href="/trainer/" class="app-card or">
         <div class="app-icon">🎯</div>
         <div class="app-name">Poker Trainer</div>
         <p class="app-desc">
@@ -237,7 +272,7 @@
         </div>
       </a>
 
-      <a href="/tournoi/" class="app-card">
+      <a href="/tournoi/" class="app-card corail">
         <div class="app-icon">🏆</div>
         <div class="app-name">Tournoi HU</div>
         <p class="app-desc">
@@ -256,8 +291,11 @@
 
     </div>
 
-    <p class="footer">Les ranges créées dans l'éditeur sont disponibles directement dans le trainer et le calculateur.</p>
+    <p class="footer">
+      Les ranges créées dans l'éditeur sont disponibles directement dans le trainer et le calculateur.
+    </p>
 
   </div>
+  <div class="stripe" aria-hidden="true"></div>
 </body>
 </html>

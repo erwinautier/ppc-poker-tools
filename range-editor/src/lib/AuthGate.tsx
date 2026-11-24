@@ -39,25 +39,25 @@ function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg, #0f1117)', padding: '1rem',
+      background: 'var(--bg)', padding: '1rem',
     }}>
       <div style={{
         width: '100%', maxWidth: 380,
-        background: 'var(--surface, #1a1f2e)',
-        border: '1px solid var(--border, #2e3650)',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 12, padding: '2rem',
       }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <img
-            src={`${import.meta.env.BASE_URL}logo-ppc.jpg`}
+            src={`${import.meta.env.BASE_URL}logo-ppc.png`}
             alt="PPC"
             style={{ height: 48, borderRadius: 8, marginBottom: '0.75rem' }}
           />
-          <div style={{ color: 'var(--text, #e8eaf0)', fontWeight: 700, fontSize: '1.1rem' }}>
+          <div style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem' }}>
             PPC Poker Tools
           </div>
-          <div style={{ color: 'var(--text-muted, #7a8299)', fontSize: '0.8rem', marginTop: 4 }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 4 }}>
             {mode === 'login' ? 'Connexion' : mode === 'signup' ? 'Créer un compte' : 'Mot de passe oublié'}
           </div>
         </div>
@@ -84,12 +84,12 @@ function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
           )}
 
           {error && (
-            <div style={{ color: '#f87171', fontSize: '0.8rem', background: '#f871711a', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+            <div style={{ color: 'var(--danger)', fontSize: '0.8rem', background: 'var(--danger-bg)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
               {error}
             </div>
           )}
           {info && (
-            <div style={{ color: '#4ade80', fontSize: '0.8rem', background: '#4ade801a', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+            <div style={{ color: 'var(--success)', fontSize: '0.8rem', background: 'var(--success-bg)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
               {info}
             </div>
           )}
@@ -98,7 +98,7 @@ function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
             type="submit" disabled={loading}
             style={{
               marginTop: '0.25rem', padding: '0.65rem', borderRadius: 8, border: 'none',
-              background: 'var(--accent, #4f7ef8)', color: '#fff', fontWeight: 600,
+              background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
               fontSize: '0.9rem',
             }}
@@ -132,15 +132,15 @@ function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
 
 const inputStyle: React.CSSProperties = {
   padding: '0.6rem 0.75rem', borderRadius: 8,
-  border: '1px solid var(--border, #2e3650)',
-  background: 'var(--bg, #0f1117)',
-  color: 'var(--text, #e8eaf0)',
+  border: '1px solid var(--border)',
+  background: 'var(--bg)',
+  color: 'var(--text)',
   fontSize: '0.9rem', outline: 'none', width: '100%', boxSizing: 'border-box',
 };
 
 const linkStyle: React.CSSProperties = {
   background: 'none', border: 'none', cursor: 'pointer',
-  color: 'var(--accent, #4f7ef8)', fontSize: '0.8rem', textDecoration: 'underline',
+  color: 'var(--accent)', fontSize: '0.8rem', textDecoration: 'underline',
 };
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -148,8 +148,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (state.status === 'loading') {
     return (
-      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f1117' }}>
-        <div style={{ color: '#7a8299', fontSize: '0.9rem' }}>Chargement…</div>
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Chargement…</div>
       </div>
     );
   }

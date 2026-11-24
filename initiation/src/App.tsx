@@ -10,6 +10,7 @@ export default function App() {
 
   return (
     <>
+      <div className="ppc-stripe" aria-hidden="true" />
       <div className="page">
         {route.name === 'parcours' && <Parcours />}
         {route.name === 'lexique' && <Lexique />}

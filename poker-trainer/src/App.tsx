@@ -34,8 +34,8 @@ function SyncBadge({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }
   if (status === 'idle') return null;
   const map = {
     saving: { label: 'Sauvegarde…', color: 'var(--text-muted)' },
-    saved:  { label: '✓ Sauvegardé', color: '#4ade80' },
-    error:  { label: '⚠ Erreur sync', color: '#f87171' },
+    saved:  { label: '✓ Sauvegardé', color: 'var(--success)' },
+    error:  { label: '⚠ Erreur sync', color: 'var(--danger)' },
   } as const;
   const { label, color } = map[status];
   return <span style={{ fontSize: '0.7rem', color }}>{label}</span>;
@@ -72,14 +72,15 @@ function AppInner() {
         height: 'var(--header-h)',
         background: 'var(--surface)',
         borderBottom: '1px solid var(--border)',
+        boxShadow: 'inset 0 3px 0 var(--ppc-corail)',
         display: 'flex', alignItems: 'center',
         padding: '0 16px', gap: 12,
         position: 'sticky', top: 0, zIndex: 100, flexShrink: 0,
       }}>
         <a href="/" title="Accueil" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit', flex: 1 }}>
-          <img src={`${import.meta.env.BASE_URL}logo-ppc.jpg`} alt="PPC" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          <img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1 }}>Poker Trainer</div>
+            <div style={{ fontFamily: 'var(--font-title)', fontSize: '1.05rem', fontWeight: 400, color: 'var(--ppc-ivoire)', lineHeight: 1.1 }}>Poker Trainer</div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>NLHE · Pré-flop</div>
           </div>
         </a>
@@ -134,7 +135,7 @@ function AppInner() {
       <nav style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         height: 'var(--nav-h)',
-        background: 'rgba(26,31,46,0.97)',
+        background: 'color-mix(in srgb, var(--surface) 96%, transparent)',
         backdropFilter: 'blur(12px)',
         borderTop: '1px solid var(--border)',
         display: 'flex', zIndex: 100,

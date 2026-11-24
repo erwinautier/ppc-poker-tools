@@ -1,0 +1,77 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  PPC · Direction artistique commune à toute la suite Poker Tools
+ *  Palette A « Vice City » (dossier « Nouvelle identité visuelle du PPC »,
+ *  novembre 2026). Polices : Bungee (titres) + Montserrat (texte).
+ *
+ *  C'est la SEULE source des couleurs d'interface : chaque app l'importe.
+ *  Pour passer à la palette B « Bleu nuit et cuivre », remplacer les 5 couleurs
+ *  officielles par celles en commentaire, puis ajuster les fonds dérivés.
+ *  (Le hub, page HTML autonome, en garde une copie : hub/index.html.)
+ *
+ *  Les couleurs des ranges (palettes d'actions définies par les joueurs)
+ *  et les couleurs de jeu (actions, positions, enseignes) ne passent PAS
+ *  par ce fichier et ne doivent pas en dépendre.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+:root {
+  /* ── Palette officielle ─────────────────────────────── palette B ─────── */
+  --ppc-prune:     #26082D;   /* Bleu nuit        #101D36 */
+  --ppc-ivoire:    #FFF2DC;   /* Ivoire           #F5EFDF */
+  --ppc-or:        #F2B81A;   /* Or sable         #D8AA54 */
+  --ppc-corail:    #FF4D70;   /* Cuivre           #C76B3E */
+  --ppc-turquoise: #0FC6CC;   /* Turquoise pétrole #119FA4 */
+
+  /* ── Typographie ──────────────────────────────────────────────────────── */
+  --font-title: 'Bungee', 'Montserrat', system-ui, sans-serif;
+  --font-text:  'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* ── Interface sombre, dérivée de la prune ────────────────────────────── */
+  --bg:           #1c0521;
+  --surface:      #2a0a31;
+  --surface2:     #38123f;
+  --border:       #512a5a;
+  --text:         var(--ppc-ivoire);
+  --text-muted:   #c4a8b9;
+  --muted:        var(--text-muted);
+
+  /* Accent : sélection, focus, onglet actif, liens */
+  --accent:       var(--ppc-turquoise);
+  --accent-hover: #4fd9de;
+  --on-accent:    var(--ppc-prune);
+
+  /* Bouton principal */
+  --gold:         var(--ppc-or);
+  --primary:      var(--ppc-or);
+  --on-primary:   var(--ppc-prune);
+
+  /* États */
+  --success:      var(--ppc-turquoise);
+  --danger:       var(--ppc-corail);
+  --warning:      var(--ppc-or);
+  --green:        var(--success);
+  --red:          var(--danger);
+
+  /* Fonds teintés (pastilles, retours, cases cochées) */
+  --accent-bg:    color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --success-bg:   color-mix(in srgb, var(--success) 16%, var(--surface));
+  --danger-bg:    color-mix(in srgb, var(--danger) 18%, var(--surface));
+  --gold-bg:      color-mix(in srgb, var(--gold) 16%, var(--surface));
+  --info-bg:      var(--accent-bg);
+  --warning-bg:   var(--gold-bg);
+
+  color-scheme: dark;
+}
+
+/* Signature du club : la frise des cinq couleurs, comme en pied de page du dossier. */
+.ppc-stripe {
+  height: 6px;
+  background: linear-gradient(90deg,
+    var(--ppc-prune) 0 20%, var(--ppc-ivoire) 20% 40%, var(--ppc-or) 40% 60%,
+    var(--ppc-corail) 60% 80%, var(--ppc-turquoise) 80% 100%);
+}
+
+button, input, select, textarea { font-family: inherit; }
+:where(input, progress) { accent-color: var(--accent); }
+select option { background: var(--surface); color: var(--text); }
+::selection { background: var(--ppc-corail); color: var(--ppc-ivoire); }
