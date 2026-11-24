@@ -1,0 +1,45 @@
+/*
+ * Jetons de design de l'Initiation.
+ * Toute la DA passe par ces variables : pour changer d'identité visuelle,
+ * il suffit de modifier ce fichier.
+ */
+:root {
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --bg:         #0f1117;
+  --surface:    #1a1f2e;
+  --surface2:   #242b3d;
+  --border:     #2e3650;
+  --text:       #e8eaf0;
+  --text-muted: #8a92a8;
+
+  --accent:     #4f7ef8;   /* liens, étape en cours */
+  --primary:    #f5c542;   /* bouton principal */
+  --on-primary: #1a1200;
+  --success:    #4ade80;
+  --success-bg: #133a22;
+  --danger:     #f87171;
+  --danger-bg:  #3a1818;
+  --warning:    #fbbf24;
+  --warning-bg: #3a2e12;
+  --info-bg:    #1b2a4d;
+
+  --felt:       #15603a;
+  --felt-edge:  #0d3f26;
+  --card-face:  #f6f7fb;
+  --card-edge:  #cfd4e2;
+  --card-back:  #8b1e2d;
+  --suit-s:     #1a1f2e;
+  --suit-h:     #dc2626;
+  --suit-d:     #2563eb;
+  --suit-c:     #15803d;
+
+  --grid-pair:  #2b3550;   /* grille 13×13 : paires */
+  --raise-bg:   #4a3a10;   /* charte : relancer */
+  --raise-fg:   var(--primary);
+  --call-bg:    var(--info-bg); /* charte : suivre */
+  --call-fg:    #9bb8ff;
+
+  --radius:     14px;
+  --radius-sm:  8px;
+}
