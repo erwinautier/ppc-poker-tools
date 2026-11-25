@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { NotInstalled, type Api, type AuthUser, type Query, type TableName } from './api';
+import { MissingRpc, NotInstalled, keyOf, type Api, type AuthUser, type Query, type TableName } from './api';
 
 // Même projet et même session que le Range Editor et le Trainer.
 const SUPABASE_URL = 'https://kbkxzvsgusakjgmnbbmx.supabase.co';
@@ -16,6 +16,7 @@ export function createSupabaseApi(): Api {
   function check(error: { code?: string; message: string } | null) {
     if (!error) return;
     if (error.code === 'PGRST205' || error.code === '42P01') throw new NotInstalled(error.message);
+    if (error.code === 'PGRST202' || error.code === '42883') throw new MissingRpc(error.message);
     throw new Error(error.message);
   }
   const asUser = (u: { id: string; email?: string } | null | undefined): AuthUser | null =>
@@ -109,11 +110,10 @@ export function createSupabaseApi(): Api {
     async update(table, id, patch) {
       const { data, error } = await sb.from(table).update(patch).eq('id', id).select('id');
       check(error);
-      if (!data || data.length === 0) throw new Error('Action réservée aux organisateurs.');
+      if (!data || data.length === 0) throw new Error('Action réservée aux gestionnaires.');
     },
     async remove(table, id) {
-      const key = table === 'club_payments' ? 'entry_id' : table === 'club_join_requests' ? 'user_id' : 'id';
-      const { error } = await sb.from(table).delete().eq(key, id);
+      const { error } = await sb.from(table).delete().eq(keyOf(table), id);
       check(error);
     },
     async rpc<T>(fn: string, args: object = {}) {

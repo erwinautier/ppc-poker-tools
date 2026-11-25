@@ -19,6 +19,21 @@ export interface JoinRequest {
   created_at: string;
 }
 
+/** Compte de la suite PPC Poker Tools ; validé, il a une fiche d'adhérent. */
+export interface Account {
+  user_id: string;
+  username: string | null;
+  /** Nom que la personne a indiqué au club. */
+  asked: string | null;
+  /** Compte à valider : visible de toute l'équipe. Adhérent : des administrateurs seulement. */
+  email: string | null;
+  confirmed: boolean;
+  created_at: string;
+  member_id: string | null;
+  refused: boolean;
+}
+export type AccountStatus = 'ok' | 'pending' | 'refused';
+
 export interface Level {
   kind: 'level' | 'break';
   sb: number;
@@ -162,9 +177,27 @@ export const STATUS_LABEL: Record<TournamentStatus, string> = {
 
 export const ROLE_LABEL: Record<Role, string> = {
   member: 'Adhérent',
-  director: 'Organisateur',
+  director: 'Gestionnaire',
   admin: 'Administrateur',
 };
+
+export const ROLE_HINT: Record<Role, string> = {
+  member: 'Consulte et s\'inscrit aux tournois',
+  director: 'Gère tournois, championnats, horloge, structures et adhérents',
+  admin: 'Comme un gestionnaire, et nomme gestionnaires et administrateurs',
+};
+
+/** Ceux qui gèrent le club, administrateurs d'abord. */
+export function clubTeam(members: Member[]): Member[] {
+  return members.filter(m => m.active && m.role !== 'member')
+    .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name, 'fr'));
+}
+
+/** Même règle que la base : le club garde un administrateur actif, avec un compte. */
+export function isLastAdmin(members: Member[], m: Member): boolean {
+  const counts = (x: Member) => x.role === 'admin' && x.active && !!x.user_id;
+  return counts(m) && !members.some(x => x.id !== m.id && counts(x));
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   coefficient: 1,

@@ -9,6 +9,7 @@ a { color: var(--accent); }
 h1, h2, h3 { font-weight: 800; text-wrap: balance; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon { flex: none; display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .muted { color: var(--text-muted); font-size: .84rem; }
 .tnum { font-variant-numeric: tabular-nums; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -36,6 +37,9 @@ h1, h2, h3 { font-weight: 800; text-wrap: balance; }
 .bottomnav { position: fixed; inset: auto 0 0 0; z-index: 20; display: flex; background: var(--surface); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
 .bottomnav a { flex: 1; min-width: 0; padding: 8px 0 9px; font-size: .64rem; letter-spacing: -.01em; display: grid; justify-items: center; gap: 3px; }
 .bottomnav a.on { color: var(--accent); }
+.badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--gold); color: var(--on-primary); font-size: .68rem; font-weight: 800; line-height: 1; }
+.bottomnav a { position: relative; }
+.bottomnav .badge { position: absolute; top: 4px; left: calc(50% + 6px); }
 @media (min-width: 900px) {
   .nav { display: flex; }
   .bottomnav { display: none; }
@@ -185,6 +189,7 @@ input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--text
 .prow .pname { font-weight: 700; min-width: 0; flex: 1 1 150px; overflow-wrap: anywhere; line-height: 1.25; }
 .prow .pname small { display: block; font-weight: 500; color: var(--text-muted); font-size: .76rem; }
 .prow .pname a { color: inherit; text-decoration: none; }
+.prow .acts { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .prow.out .pname { color: var(--text-muted); font-weight: 600; }
 .prow .idx { width: 26px; color: var(--text-muted); font-size: .78rem; text-align: right; font-variant-numeric: tabular-nums; }
 .toggle { min-height: 34px; padding: 4px 11px; border-radius: 20px; border: 1px solid var(--border); background: none; color: var(--text-muted); font-size: .77rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
@@ -275,7 +280,7 @@ input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--text
 .modal.wide { max-width: 780px; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .modal-head h2 { font-size: 1.1rem; }
-.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; max-height: 46dvh; overflow-y: auto; padding: 2px; }
+.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); grid-auto-rows: max-content; gap: 8px; max-height: 46dvh; overflow-y: auto; padding: 2px; }
 .pick { text-align: left; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: .88rem; font-weight: 600; cursor: pointer; min-height: 48px; line-height: 1.2; }
 .pick small { display: block; color: var(--text-muted); font-weight: 500; font-size: .72rem; margin-top: 2px; }
 .pick.on { border-color: var(--gold); background: var(--gold-bg); }

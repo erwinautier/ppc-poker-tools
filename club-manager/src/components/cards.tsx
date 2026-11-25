@@ -13,7 +13,7 @@ export function StatusTag({ status }: { status: Tournament['status'] }) {
 
 /** S'inscrire, se désinscrire, liste d'attente. */
 export function RegisterButton({ t, entries, reload, big }: { t: Tournament; entries: Entry[]; reload: () => Promise<void>; big?: boolean }) {
-  const { me, user } = useClub();
+  const { me, user, account } = useClub();
   const [run, busy] = useAction();
   const confirm = useConfirm();
   const mine = me ? entries.find(e => e.member_id === me.id && e.status !== 'cancelled') : undefined;
@@ -23,7 +23,8 @@ export function RegisterButton({ t, entries, reload, big }: { t: Tournament; ent
 
   if (!['open', 'closed'].includes(t.status)) return null;
   if (!me) {
-    return t.status === 'open' ? <a className={cls} href="#/compte">{user ? 'Rattacher mon compte' : 'Se connecter pour s\'inscrire'}</a> : null;
+    if (t.status !== 'open' || account === 'ok' || account === 'refused') return null;
+    return <a className={cls} href="#/compte">{user ? 'Compte à valider' : 'Se connecter pour s\'inscrire'}</a>;
   }
   if (mine) {
     const rank = mine.status === 'waitlist'

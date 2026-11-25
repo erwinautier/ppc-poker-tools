@@ -67,21 +67,23 @@ function Shell() {
 function Forbidden() {
   return (
     <div className="empty">
-      <b>Page réservée aux organisateurs</b>
+      <b>Page réservée aux gestionnaires</b>
       <a className="btn" href="#/">Retour à l'accueil</a>
     </div>
   );
 }
 
+const Badge = ({ n = 0 }: { n?: number }) => n > 0 ? <span className="badge"><span aria-hidden="true">{n}</span><span className="sr-only">, {n > 1 ? `${n} comptes` : '1 compte'} à valider</span></span> : null;
+
 function TopBar({ section }: { section: string }) {
-  const { isStaff, me, user } = useClub();
-  const items: { href: string; label: string; short?: string; icon: IconName; on: boolean }[] = [
+  const { isStaff, me, user, pending } = useClub();
+  const items: { href: string; label: string; short?: string; icon: IconName; on: boolean; count?: number }[] = [
     { href: '#/', label: 'Accueil', icon: 'home', on: section === '' },
     { href: '#/tournois', label: 'Tournois', icon: 'calendar', on: section === 'tournois' || section === 't' },
     { href: '#/championnats', label: 'Championnats', short: 'Classement', icon: 'trophy', on: section === 'championnats' || section === 'c' },
     ...(isStaff ? [
       { href: '#/structures', label: 'Structures', short: 'Blindes', icon: 'layers' as const, on: section === 'structures' },
-      { href: '#/adherents', label: 'Adhérents', icon: 'users' as const, on: section === 'adherents' },
+      { href: '#/adherents', label: 'Adhérents', icon: 'users' as const, on: section === 'adherents', count: pending },
     ] : []),
     { href: '#/compte', label: me ? me.name.split(' ')[0] : user ? 'Mon compte' : 'Connexion', short: user ? 'Compte' : 'Connexion', icon: 'user', on: section === 'compte' },
   ];
@@ -95,12 +97,12 @@ function TopBar({ section }: { section: string }) {
           </a>
           <span className="spacer" />
           <nav className="nav" aria-label="Navigation principale">
-            {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={17} />{i.label}</a>)}
+            {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={17} />{i.label}<Badge n={i.count} /></a>)}
           </nav>
         </div>
       </header>
       <nav className="bottomnav" aria-label="Navigation principale">
-        {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={21} />{i.short ?? i.label}</a>)}
+        {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={21} />{i.short ?? i.label}<Badge n={i.count} /></a>)}
       </nav>
     </>
   );
@@ -115,8 +117,10 @@ function DemoBar() {
         <span>Démo : club fictif, rien n'est publié.</span>
         <label>Voir en tant que{' '}
           <select className="demorole" value={demo!.role()} onChange={e => { demo!.setRole(e.target.value as DemoRole); void refresh(); }}>
-            <option value="admin">organisateur</option>
+            <option value="admin">administrateur</option>
+            <option value="director">gestionnaire</option>
             <option value="member">adhérent</option>
+            <option value="pending">nouveau compte</option>
             <option value="anon">visiteur</option>
           </select>
         </label>

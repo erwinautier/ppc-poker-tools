@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 
-const SQL = readFileSync(new URL('../supabase/001_club.sql', import.meta.url), 'utf8');
+const SQL = ['001_club.sql', '002_club_accounts.sql'].map(f => readFileSync(new URL(`../supabase/${f}`, import.meta.url), 'utf8'));
 let db: PGlite;
 
 const U = {
@@ -30,7 +30,7 @@ beforeAll(async () => {
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
     create schema auth; grant usage on schema auth, public to anon, authenticated;
-    create table auth.users (id uuid primary key, email text);
+    create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz default now(), created_at timestamptz default now());
     create function auth.uid() returns uuid language sql stable as
       $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant execute on function auth.uid() to anon, authenticated;
@@ -39,9 +39,24 @@ beforeAll(async () => {
     alter default privileges in schema public grant all on tables to anon, authenticated;
     alter default privileges in schema public grant all on functions to anon, authenticated;
   `);
-  for (const [k, v] of Object.entries(U)) await root('insert into auth.users values ($1, $2)', [v, `${k}@exemple.test`]);
-  await db.exec(SQL);
-  await db.exec(SQL); // relançable
+  // La table de la suite : chacun n'y lit que son profil.
+  await db.exec(`
+    create table public.profiles (id uuid primary key references auth.users (id) on delete cascade, username text, created_at timestamptz default now());
+    alter table public.profiles enable row level security;
+    create policy own on public.profiles for select to authenticated using (id = auth.uid());
+    -- Les deux tables privées des outils, comme en production : chacun ses lignes.
+    create table public.range_collections (user_id uuid primary key references auth.users (id) on delete cascade, data jsonb);
+    create table public.trainer_stats (user_id uuid primary key references auth.users (id) on delete cascade, data jsonb);
+    alter table public.range_collections enable row level security;
+    alter table public.trainer_stats enable row level security;
+    create policy own on public.range_collections for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+    create policy own on public.trainer_stats for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+  `);
+  for (const [k, v] of Object.entries(U)) {
+    await root('insert into auth.users (id, email) values ($1, $2)', [v, `${k}@exemple.test`]);
+    await root('insert into profiles (id, username) values ($1, $2)', [v, `pseudo-${k}`]);
+  }
+  for (const s of [...SQL, ...SQL]) await db.exec(s); // relançables
 });
 
 beforeEach(async () => {
@@ -111,6 +126,44 @@ describe('droits d\'écriture', () => {
     await as('admin', `update club_members set role = 'director' where id = $1`, [ids.alice]);
     await expect(as('admin', `update club_members set role = 'member' where id = $1`, [ids.admin])).rejects.toThrow(/au moins un administrateur/);
     await expect(as('admin', 'delete from club_members where id = $1', [ids.admin])).rejects.toThrow(/au moins un administrateur/);
+  });
+  it('un gestionnaire nommé gère tout le club, et perd tout si on le retire', async () => {
+    const work = async (who: 'alice') => {
+      const [s] = await as<{ id: string }>(who, `insert into club_structures (name, starting_stack) values ('S', 20000) returning id`);
+      const [c] = await as<{ id: string }>(who, `insert into club_championships (name) values ('C') returning id`);
+      const [t] = await as<{ id: string }>(who, `insert into club_tournaments (name, starts_at, championship_id) values ('Soirée', now(), $1) returning id`, [c.id]);
+      const [e] = await as<{ id: string }>(who, `insert into club_entries (tournament_id, member_id, name) values ($1, $2, 'Bob') returning id`, [t.id, ids.bob]);
+      await as(who, 'insert into club_payments (entry_id, tournament_id) values ($1, $2)', [e.id, t.id]);
+      await as(who, 'select club_set_clock($1, 0, 0, true)', [t.id]);
+      await as(who, `insert into club_members (name) values ('Recrue')`);
+      await as(who, `update club_members set active = false where name = 'Recrue'`);
+      for (const [table, row] of [['club_tournaments', t], ['club_championships', c], ['club_structures', s]] as const) {
+        expect(await as(who, `delete from ${table} where id = $1 returning id`, [row.id])).toHaveLength(1);
+      }
+      expect(await as(who, `delete from club_members where name = 'Recrue' returning id`)).toHaveLength(1);
+    };
+    await expect(work('alice')).rejects.toThrow(/row-level security/);
+    await as('admin', `update club_members set role = 'director' where id = $1`, [ids.alice]);
+    await work('alice');
+    await as('admin', `update club_members set role = 'member' where id = $1`, [ids.alice]);
+    await expect(work('alice')).rejects.toThrow(/row-level security/);
+  });
+  it('un second administrateur a les mêmes droits que le premier', async () => {
+    await as('admin', `update club_members set role = 'admin' where id = $1`, [ids.alice]);
+    await as('alice', `update club_members set role = 'director' where id = $1`, [ids.bob]);
+    await as('alice', `update club_members set role = 'member' where id = $1`, [ids.admin]);
+    await expect(as('admin', `update club_members set role = 'admin' where id = $1`, [ids.admin])).resolves.toEqual([]);
+    expect(await root('select role from club_members where id = $1', [ids.admin])).toEqual([{ role: 'member' }]);
+    await expect(as('alice', `update club_members set role = 'member' where id = $1`, [ids.alice])).rejects.toThrow(/au moins un administrateur/);
+  });
+  it('un rôle donné d\'avance ne vaut qu\'une fois le compte relié, par un administrateur', async () => {
+    await as('admin', `update club_members set role = 'director' where id = $1`, [ids.paper]);
+    await as('stranger', `select club_request_join('Papier')`);
+    expect(await as('stranger', 'select name from club_tournaments')).toEqual([{ name: 'P' }]);
+    await expect(as('director', 'select club_approve_request($1, $2)', [U.stranger, ids.paper])).rejects.toThrow(/administrateur/);
+    await as('admin', 'select club_approve_request($1, $2)', [U.stranger, ids.paper]);
+    expect(await as('stranger', 'select club_role() as r')).toEqual([{ r: 'director' }]);
+    expect((await as('stranger', 'select name from club_tournaments')).length).toBe(3);
   });
   it('les fonctions sensibles sont fermées', async () => {
     for (const q of [
@@ -199,6 +252,191 @@ describe('rattachement des comptes', () => {
   });
   it('on ne dépose pas de demande au nom d\'un autre', async () => {
     await expect(as('stranger', `insert into club_join_requests (user_id, name) values ($1, 'x')`, [U.bob])).rejects.toThrow();
+  });
+});
+
+describe('validation des comptes', () => {
+  type A = { user_id: string; username: string | null; asked: string | null; email: string | null; confirmed: boolean; member_id: string | null; refused: boolean };
+  const accounts = async (who: keyof typeof U) => (await as<{ r: A[] }>(who, 'select club_accounts() as r'))[0].r;
+  const find = async (who: keyof typeof U, id: string) => (await accounts(who)).find(a => a.user_id === id)!;
+  const status = async (who: keyof typeof U) => (await as<{ r: string }>(who, 'select club_account_status() as r'))[0].r;
+  const count = async (who: keyof typeof U) => (await as<{ r: number }>(who, 'select club_pending_count() as r'))[0].r;
+  const validate = async (who: keyof typeof U, user: string, member: string | null = null, name: string | null = null, role = 'member') =>
+    (await as<{ r: string }>(who, 'select club_validate_account($1, $2, $3, $4) as r', [user, member, name, role]))[0].r;
+  const refuse = (who: keyof typeof U, user: string, yes = true) => as(who, 'select club_refuse_account($1, $2)', [user, yes]);
+  const temp = async (n: number, username: string, over = '') => {
+    const u = `00000000-0000-0000-0000-0000000001${String(n).padStart(2, '0')}`;
+    await root('insert into auth.users (id, email) values ($1, $2)', [u, `temp${n}@exemple.test`]);
+    await root('insert into profiles (id, username) values ($1, $2)', [u, username]);
+    if (over) await root(`update auth.users set ${over} where id = $1`, [u]);
+    return u;
+  };
+  beforeEach(async () => {
+    await db.exec(`delete from club_refused_accounts; delete from range_collections; delete from trainer_stats; delete from auth.users where email like 'temp%'`);
+  });
+
+  it('un nouveau compte attend ; validé par un gestionnaire, il devient adhérent', async () => {
+    expect(await status('stranger')).toBe('pending');
+    expect(await as('stranger', 'select name from club_tournaments')).toEqual([{ name: 'P' }]);
+    await expect(as('stranger', 'select club_register($1)', [ids.pub])).rejects.toThrow(/rattaché/);
+    expect(await count('director')).toBe(1);
+    const m = await validate('director', U.stranger);
+    expect(await root('select user_id, name, role, active from club_members where id = $1', [m])).toEqual([{ user_id: U.stranger, name: 'pseudo-stranger', role: 'member', active: true }]);
+    expect(await status('stranger')).toBe('ok');
+    expect(await count('director')).toBe(0);
+    expect((await as('stranger', 'select name from club_tournaments')).length).toBe(2);
+    await as('stranger', 'select club_register($1)', [ids.pub]);
+  });
+  it('un administrateur valide aussi, et peut donner un rôle ; un gestionnaire non', async () => {
+    await expect(validate('director', U.stranger, null, null, 'director')).rejects.toThrow(/administrateur/);
+    await expect(validate('director', U.stranger, null, null, 'admin')).rejects.toThrow(/administrateur/);
+    await expect(validate('director', U.stranger, ids.paper, null, 'director')).rejects.toThrow(/administrateur/);
+    expect(await status('stranger')).toBe('pending');
+    await expect(validate('admin', U.stranger, null, null, 'roi')).rejects.toThrow(/check/);
+    await validate('admin', U.stranger, null, null, 'director');
+    expect(await as('stranger', 'select club_role() as r')).toEqual([{ r: 'director' }]);
+  });
+  it('personne ne se valide soi-même, ni ne valide ou refuse sans être de l\'équipe', async () => {
+    for (const q of [`select club_validate_account('${U.stranger}')`, `select club_refuse_account('${U.stranger}', true)`, 'select club_accounts()']) {
+      await expect(as('alice', q)).rejects.toThrow(/gestionnaires/);
+      await expect(as('stranger', q)).rejects.toThrow(/gestionnaires/);
+      await expect(as('anon', q)).rejects.toThrow(/permission denied/);
+    }
+    expect(await count('alice')).toBe(0);
+    for (const q of ['select club_account_status()', 'select club_account_ok()', 'select club_pending_count()']) await expect(as('anon', q)).rejects.toThrow(/permission denied/);
+    await expect(as('stranger', `insert into club_members (user_id, name) values ($1, 'Moi')`, [U.stranger])).rejects.toThrow(/row-level security/);
+    for (const t of ['club_refused_accounts', 'club_settings']) for (const who of ['anon', 'alice', 'director', 'admin'] as const) {
+      await expect(as(who, `select * from ${t}`)).rejects.toThrow(/permission denied/);
+      await expect(as(who, `delete from ${t}`)).rejects.toThrow(/permission denied/);
+    }
+    await as('admin', 'update club_members set active = false where id = $1', [ids.director]);
+    await expect(as('director', 'select club_accounts()')).rejects.toThrow(/gestionnaires/);
+    expect(await count('director')).toBe(0);
+  });
+  it('un compte en attente ou refusé n\'enregistre rien dans les outils, sans rien perdre', async () => {
+    for (const t of ['range_collections', 'trainer_stats']) {
+      const save = (who: keyof typeof U, v: string) => as(who, `insert into ${t} (user_id, data) values ($1, $2) on conflict (user_id) do update set data = excluded.data returning data`, [U[who], JSON.stringify(v)]);
+      const read = async (who: keyof typeof U) => (await as<{ data: unknown }>(who, `select data from ${t}`)).map(x => x.data);
+      await expect(save('stranger', 'a')).rejects.toThrow(/row-level security/);
+      await root(`insert into ${t} values ($1, '"ancien"')`, [U.stranger]);
+      await expect(save('stranger', 'b')).rejects.toThrow(/row-level security/);
+      expect(await as('stranger', `update ${t} set data = '"c"' returning data`)).toEqual([]);
+      expect(await read('stranger')).toEqual(['ancien']);
+      await refuse('director', U.stranger);
+      await expect(save('stranger', 'd')).rejects.toThrow(/row-level security/);
+      expect(await read('stranger')).toEqual(['ancien']);
+
+      const m = await validate('admin', U.stranger);
+      expect(await save('stranger', 'e')).toEqual([{ data: 'e' }]);
+      expect(await as('stranger', `update ${t} set data = '"f"' returning data`)).toEqual([{ data: 'f' }]);
+      expect(await read('stranger')).toEqual(['f']);
+      expect(await read('alice')).toEqual([]);
+      await expect(as('stranger', `insert into ${t} (user_id, data) values ($1, '"vol"')`, [U.bob])).rejects.toThrow(/row-level security/);
+
+      // Ancien adhérent : garde les outils. Compte détaché : repasse à valider.
+      await as('admin', 'update club_members set active = false where id = $1', [m]);
+      expect(await status('stranger')).toBe('ok');
+      expect(await save('stranger', 'g')).toEqual([{ data: 'g' }]);
+      await as('admin', 'update club_members set user_id = null where id = $1', [m]);
+      expect(await status('stranger')).toBe('pending');
+      await expect(save('stranger', 'h')).rejects.toThrow(/row-level security/);
+      expect(await read('stranger')).toEqual(['g']);
+      await as('admin', 'delete from club_members where id = $1', [m]);
+    }
+  });
+  it('les adhérents existants enregistrent comme avant, et les règles d\'origine sont intactes', async () => {
+    for (const who of ['admin', 'director', 'alice'] as const) {
+      await as(who, `insert into range_collections (user_id, data) values ($1, '"x"')`, [U[who]]);
+      await as(who, `delete from range_collections where user_id = $1`, [U[who]]);
+    }
+    expect(await root(`select tablename, policyname, permissive from pg_policies where tablename in ('range_collections', 'trainer_stats') order by 1, 2`)).toEqual(
+      ['range_collections', 'trainer_stats'].flatMap(tablename => [
+        { tablename, policyname: 'club_validated_insert', permissive: 'RESTRICTIVE' },
+        { tablename, policyname: 'club_validated_update', permissive: 'RESTRICTIVE' },
+        { tablename, policyname: 'own', permissive: 'PERMISSIVE' },
+      ]));
+  });
+  it('refuser, revenir sur un refus, valider un compte refusé', async () => {
+    await as('stranger', `select club_request_join('Moi')`);
+    expect((await find('director', U.stranger)).asked).toBe('Moi');
+    await refuse('director', U.stranger);
+    await refuse('director', U.stranger);
+    expect(await status('stranger')).toBe('refused');
+    expect(await count('admin')).toBe(0);
+    expect(await find('director', U.stranger)).toMatchObject({ refused: true, asked: null });
+    await refuse('director', U.stranger, false);
+    expect(await status('stranger')).toBe('pending');
+    await refuse('admin', U.stranger);
+    await validate('admin', U.stranger);
+    expect(await status('stranger')).toBe('ok');
+    expect(await root('select * from club_refused_accounts')).toEqual([]);
+    await expect(refuse('admin', U.alice)).rejects.toThrow(/déjà rattaché/);
+    expect(await status('alice')).toBe('ok');
+  });
+  it('adresses : toutes pour un administrateur, celles à valider pour un gestionnaire', async () => {
+    const admin = await accounts('admin');
+    expect(admin.map(a => a.username).sort()).toEqual(Object.keys(U).map(k => `pseudo-${k}`).sort());
+    expect(admin.every(a => a.email)).toBe(true);
+    expect((await accounts('director')).filter(a => a.email).map(a => a.user_id)).toEqual([U.stranger]);
+    await as('admin', 'update club_members set active = false where id = $1', [ids.alice]);
+    expect((await find('director', U.alice)).email).toBeNull();
+  });
+  it('le nom : choisi, sinon indiqué au club, sinon le pseudo', async () => {
+    const m1 = await validate('admin', U.stranger, null, '  Zoé Riou ');
+    expect(await root('select name from club_members where id = $1', [m1])).toEqual([{ name: 'Zoé Riou' }]);
+    await root('delete from club_members where id = $1', [m1]);
+    await as('stranger', `select club_request_join('Zoé du club')`);
+    const m2 = await validate('admin', U.stranger);
+    expect(await root('select name from club_members where id = $1', [m2])).toEqual([{ name: 'Zoé du club' }]);
+    expect(await root('select * from club_join_requests')).toEqual([]);
+  });
+  it('relier à une fiche existante, même un ancien adhérent, sans doublon', async () => {
+    await root('update club_members set active = false where id = $1', [ids.paper]);
+    expect(await validate('director', U.stranger, ids.paper, 'Ignoré')).toBe(ids.paper);
+    expect(await root('select name, active, user_id, role from club_members where id = $1', [ids.paper])).toEqual([{ name: 'Papier', active: true, user_id: U.stranger, role: 'member' }]);
+    await expect(validate('admin', U.stranger)).rejects.toThrow(/déjà rattaché/);
+    const other = await temp(1, 'autre');
+    await expect(validate('admin', other, ids.alice)).rejects.toThrow(/déjà rattachée/);
+    expect(await root('select user_id from club_members where id = $1', [ids.alice])).toEqual([{ user_id: U.alice }]);
+  });
+  it('le rôle déjà porté par une fiche ne change pas ; seul un administrateur la relie', async () => {
+    await root(`update club_members set role = 'admin' where id = $1`, [ids.paper]);
+    await expect(validate('director', U.stranger, ids.paper)).rejects.toThrow(/administrateur/);
+    await validate('admin', U.stranger, ids.paper, null, 'director');
+    expect(await as('stranger', 'select club_role() as r')).toEqual([{ r: 'admin' }]);
+  });
+  it('compte absent, adresse non confirmée, pseudo vide ou trop long', async () => {
+    await expect(validate('admin', '00000000-0000-0000-0000-0000000001ff')).rejects.toThrow(/n'existe plus/);
+    const fake = await temp(3, 'Président', 'email_confirmed_at = null');
+    expect((await find('admin', fake)).confirmed).toBe(false);
+    expect(await count('admin')).toBe(1);
+    await expect(validate('admin', fake)).rejects.toThrow(/confirmée/);
+    await expect(validate('admin', fake, ids.paper)).rejects.toThrow(/confirmée/);
+    const blank = await temp(4, '   '), long = await temp(5, 'x'.repeat(200)), bare = await temp(6, 'x');
+    await root('delete from profiles where id = $1', [bare]);
+    expect((await accounts('admin')).filter(x => [blank, bare].includes(x.user_id)).map(x => x.username)).toEqual([null, null]);
+    await expect(validate('admin', blank)).rejects.toThrow(/nom de la nouvelle fiche/);
+    await expect(validate('admin', bare)).rejects.toThrow(/nom de la nouvelle fiche/);
+    const m = await validate('admin', long);
+    expect((await root<{ name: string }>('select name from club_members where id = $1', [m]))[0].name).toHaveLength(60);
+  });
+  it('un compte supprimé disparaît de la liste, sa fiche reste', async () => {
+    const u = await temp(7, 'parti');
+    const m = await validate('admin', u);
+    await root('delete from auth.users where id = $1', [u]);
+    expect((await accounts('admin')).some(x => x.user_id === u)).toBe(false);
+    expect(await root('select name, user_id from club_members where id = $1', [m])).toEqual([{ name: 'parti', user_id: null }]);
+  });
+  it('relancer le script ne valide personne', async () => {
+    await refuse('admin', await temp(8, 'refusé'));
+    await db.exec(SQL[1]);
+    expect(await status('stranger')).toBe('pending');
+    expect(await root('select 1 from club_refused_accounts')).toHaveLength(1);
+  });
+  it('rien n\'est écrit dans les profils', async () => {
+    const before = await root('select * from profiles order by id');
+    await validate('admin', U.stranger, null, 'Autre nom');
+    expect(await root('select * from profiles order by id')).toEqual(before);
   });
 });
 

@@ -2,13 +2,13 @@
  * Mode démo : les mêmes opérations que la base, dans le navigateur. Deux onglets
  * ouverts (organisateur et écran géant, par exemple) restent synchronisés.
  */
-import type { Api, AuthUser, Query, TableName } from './api';
+import { keyOf as pk, type Api, type AuthUser, type Query, type TableName } from './api';
 import { DEMO_USERS, seedDemo, type DemoDb } from './demoData';
-import type { Entry, Knockout, Member, Tournament } from './types';
+import { isLastAdmin, type Entry, type Knockout, type Member, type Tournament } from './types';
 
-const KEY = 'ppc-club-demo-v1';
+const KEY = 'ppc-club-demo-v2';
 const ROLE_KEY = 'ppc-club-demo-role';
-export type DemoRole = 'admin' | 'member' | 'anon';
+export type DemoRole = 'admin' | 'director' | 'member' | 'pending' | 'anon';
 
 export interface DemoApi extends Api {
   role(): DemoRole;
@@ -56,7 +56,16 @@ export function createDemoApi(): DemoApi {
   };
   const me = (): Member | undefined => load().club_members.find(m => m.user_id === user()?.id && m.active);
   const staff = () => { const r = me()?.role; return r === 'admin' || r === 'director'; };
-  const needStaff = () => { if (!staff()) throw new Error('Action réservée aux organisateurs.'); };
+  const needStaff = () => { if (!staff()) throw new Error('Action réservée aux gestionnaires.'); };
+  /** Mêmes règles que club_members_guard ; after nul = suppression. */
+  function guardMember(before: Member | null, after: Member | null) {
+    if (me()?.role !== 'admin' && [before, after].some(x => x && x.role !== 'member')) {
+      throw new Error(before ? 'Seul un administrateur peut modifier un gestionnaire.' : 'Seul un administrateur peut attribuer ce rôle.');
+    }
+    if (before && isLastAdmin(load().club_members, before) && !(after && after.role === 'admin' && after.active && after.user_id)) {
+      throw new Error('Le club doit garder au moins un administrateur.');
+    }
+  }
 
   /** Mêmes règles de lecture que la base. */
   function visible(table: TableName, row: object): boolean {
@@ -74,7 +83,6 @@ export function createDemoApi(): DemoApi {
     }
   }
 
-  const pk = (table: TableName) => table === 'club_payments' ? 'entry_id' : table === 'club_join_requests' ? 'user_id' : 'id';
   const rows = (table: TableName) => load()[table] as unknown as Record<string, unknown>[];
   const setRows = (table: TableName, list: Record<string, unknown>[]) => {
     (load() as unknown as Record<string, unknown>)[table] = list;
@@ -148,6 +156,7 @@ export function createDemoApi(): DemoApi {
         return row;
       });
       for (const row of list) {
+        if (table === 'club_members') guardMember(null, row as unknown as Member);
         if (table === 'club_entries' && row.member_id && rows(table).some(e => e.tournament_id === row.tournament_id && e.member_id === row.member_id)) {
           throw new Error('Cet adhérent est déjà inscrit.');
         }
@@ -166,6 +175,7 @@ export function createDemoApi(): DemoApi {
       needStaff();
       const row = rows(table).find(r => r[pk(table)] === id);
       if (!row) throw new Error('Introuvable.');
+      if (table === 'club_members') guardMember(row as unknown as Member, { ...row, ...patch } as unknown as Member);
       Object.assign(row, clone(patch));
       if (table === 'club_members' && 'name' in patch) {
         for (const e of load().club_entries) if (e.member_id === id) e.name = String(row.name);
@@ -178,6 +188,7 @@ export function createDemoApi(): DemoApi {
       const row = rows(table).find(r => r[pk(table)] === id);
       if (!row) return;
       if (table !== 'club_join_requests') needStaff();
+      if (table === 'club_members') guardMember(row as unknown as Member, null);
       const db = load();
       setRows(table, rows(table).filter(r => r !== row));
       if (table === 'club_tournaments') {
@@ -205,20 +216,67 @@ export function createDemoApi(): DemoApi {
       const t = db.club_tournaments.find(x => x.id === a.p_tournament);
       const done = (v?: unknown) => { changed((a.p_tournament as string) ?? null); return v as T; };
       switch (fn) {
-        case 'club_request_join': throw new Error('Indisponible en mode démo.');
+        case 'club_request_join': {
+          const u = user()!;
+          const others = db.club_join_requests.filter(x => x.user_id !== u.id);
+          db.club_join_requests = [...others, { user_id: u.id, name: String(a.p_name).trim(), email: u.email, created_at: new Date().toISOString() }];
+          return done();
+        }
+        case 'club_account_status': {
+          const u = user();
+          return (!u ? 'none' : db.club_members.some(m => m.user_id === u.id) ? 'ok' : db.refused.includes(u.id) ? 'refused' : 'pending') as T;
+        }
+        case 'club_pending_count':
+          return (staff() ? db.accounts.filter(x => x.confirmed && !db.refused.includes(x.user_id) && !db.club_members.some(m => m.user_id === x.user_id)).length : 0) as T;
+        case 'club_refuse_account': {
+          needStaff();
+          db.refused = db.refused.filter(x => x !== a.p_user);
+          if (a.p_refuse) {
+            db.refused.push(a.p_user);
+            db.club_join_requests = db.club_join_requests.filter(x => x.user_id !== a.p_user);
+          }
+          return done();
+        }
         case 'club_approve_request': {
           needStaff();
           const req = db.club_join_requests.find(r => r.user_id === a.p_user);
           if (!req) throw new Error('Cette demande n\'existe plus.');
+          let id: string;
           if (a.p_member) {
             const m = db.club_members.find(x => x.id === a.p_member);
             if (!m || m.user_id) throw new Error('Cette fiche est déjà rattachée à un compte.');
-            m.user_id = req.user_id;
+            guardMember(m, { ...m, user_id: req.user_id, active: true });
+            Object.assign(m, { user_id: req.user_id, active: true });
+            id = m.id;
           } else {
-            db.club_members.push({ id: uid(), user_id: req.user_id, name: req.name, role: 'member', active: true, created_at: new Date().toISOString() });
+            id = uid();
+            db.club_members.push({ id, user_id: req.user_id, name: req.name, role: 'member', active: true, created_at: new Date().toISOString() });
           }
           db.club_join_requests = db.club_join_requests.filter(r => r !== req);
-          return done();
+          return done(id);
+        }
+        case 'club_accounts': {
+          needStaff();
+          const admin = me()?.role === 'admin';
+          return clone(db.accounts).sort((x, y) => y.created_at.localeCompare(x.created_at)).map(x => {
+            const m = db.club_members.find(z => z.user_id === x.user_id);
+            return { ...x, email: admin || !m ? x.email : null, member_id: m?.id ?? null, refused: db.refused.includes(x.user_id), asked: db.club_join_requests.find(z => z.user_id === x.user_id)?.name ?? null };
+          }) as T;
+        }
+        case 'club_validate_account': {
+          needStaff();
+          const account = db.accounts.find(x => x.user_id === a.p_user);
+          if (!account) throw new Error('Ce compte n\'existe plus.');
+          if (!account.confirmed) throw new Error('L\'adresse de ce compte n\'est pas encore confirmée.');
+          if (db.club_members.some(m => m.user_id === a.p_user)) throw new Error('Ce compte est déjà rattaché à un adhérent.');
+          const m = db.club_members.find(x => x.id === a.p_member);
+          if (a.p_member && (!m || m.user_id)) throw new Error('Cette fiche est déjà rattachée à un compte.');
+          const next: Member = { id: uid(), name: String(a.p_name ?? account.username), created_at: new Date().toISOString(), ...m, user_id: a.p_user, active: true, role: m && m.role !== 'member' ? m.role : a.p_role };
+          guardMember(m ?? null, next);
+          if (m) Object.assign(m, next); else db.club_members.push(next);
+          db.club_join_requests = db.club_join_requests.filter(x => x.user_id !== a.p_user);
+          db.refused = db.refused.filter(x => x !== a.p_user);
+          return done(next.id);
         }
         case 'club_register': {
           const m = me();
