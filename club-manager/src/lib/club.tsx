@@ -1,9 +1,9 @@
 /** Contexte de l'application : données, compte, rôle ; et chargements partagés. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { NotInstalled, messageOf, type Api, type AuthUser } from './api';
+import { MissingRpc, NotInstalled, messageOf, type Api, type AuthUser } from './api';
 import { createDemoApi, type DemoApi } from './demoApi';
 import { createSupabaseApi } from './supabaseApi';
-import { withScoring, withSettings, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Tournament } from './types';
+import { withScoring, withSettings, type Account, type AccountStatus, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Tournament } from './types';
 
 export const isDemo = new URLSearchParams(location.search).has('demo');
 export const api: Api = isDemo ? createDemoApi() : createSupabaseApi();
@@ -15,6 +15,10 @@ interface Club {
   user: AuthUser | null;
   me: Member | null;
   request: JoinRequest | null;
+  /** Validation du compte ; nul si inconnue (script 002 absent, hors ligne). */
+  account: AccountStatus | null;
+  /** Comptes à valider, pour l'équipe du club. */
+  pending: number;
   isStaff: boolean;
   isAdmin: boolean;
   recovering: boolean;
@@ -24,23 +28,35 @@ interface Club {
 const Ctx = createContext<Club>(null!);
 export const useClub = () => useContext(Ctx);
 
+type Who = Pick<Club, 'user' | 'me' | 'request' | 'account' | 'pending'>;
+const NOBODY: Who = { user: null, me: null, request: null, account: null, pending: 0 };
+const optional = <T,>(p: Promise<T>, otherwise: T) => p.catch(() => otherwise);
+
+async function whoIs(user: AuthUser): Promise<Who> {
+  const [m] = await api.select<Member>('club_members', { eq: { user_id: user.id } });
+  if (!m) {
+    const [[request], account] = await Promise.all([
+      api.select<JoinRequest>('club_join_requests', { eq: { user_id: user.id } }),
+      optional(api.rpc<AccountStatus | null>('club_account_status'), null),
+    ]);
+    // Le script 002 sait qu'une fiche existe même si on ne la voit pas : ancien adhérent.
+    return { user, me: null, request: request ?? null, account, pending: 0 };
+  }
+  const me = m.active ? m : null;
+  const pending = me && me.role !== 'member' ? await optional(api.rpc<number>('club_pending_count'), 0) : 0;
+  return { user, me, request: null, account: 'ok', pending };
+}
+
 export function ClubProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<{ ready: boolean; installed: boolean; user: AuthUser | null; me: Member | null; request: JoinRequest | null }>(
-    { ready: false, installed: true, user: null, me: null, request: null });
+  const [state, setState] = useState<Who & { ready: boolean; installed: boolean }>({ ...NOBODY, ready: false, installed: true });
   const [recovering, setRecovering] = useState(false);
 
   const refresh = useCallback(async () => {
     const user = await api.user();
     try {
-      if (!user) {
-        // Une lecture suffit à savoir si la base est installée.
-        await api.select('club_championships', { eq: { status: 'active' } });
-        setState({ ready: true, installed: true, user: null, me: null, request: null });
-        return;
-      }
-      const [me] = await api.select<Member>('club_members', { eq: { user_id: user.id } });
-      const [request] = me ? [] : await api.select<JoinRequest>('club_join_requests', { eq: { user_id: user.id } });
-      setState({ ready: true, installed: true, user, me: me?.active ? me : null, request: request ?? null });
+      // Sans compte, une lecture suffit à savoir si la base est installée.
+      if (!user) await api.select('club_championships', { eq: { status: 'active' } });
+      setState({ ready: true, installed: true, ...(user ? await whoIs(user) : NOBODY) });
     } catch (e) {
       setState(s => ({ ...s, ready: true, installed: !(e instanceof NotInstalled), user }));
     }
@@ -58,6 +74,24 @@ export function ClubProvider({ children }: { children: ReactNode }) {
       setTimeout(() => void refresh(), 0);
     });
   }, [refresh]);
+
+  // Rôle changé ou compte validé entre-temps : visible au retour sur l'onglet, sans recharger la page.
+  useEffect(() => {
+    let last = Date.now();
+    const back = async () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 10_000) return;
+      last = Date.now();
+      try {
+        const user = await api.user();
+        if (!user) return; // Une déconnexion passe par onAuth.
+        const who = await whoIs(user);
+        const same = (s: Who) => JSON.stringify([s.me, s.request, s.account, s.pending]);
+        setState(s => s.user?.id !== user.id || same(s) === same(who) ? s : { ...s, ...who });
+      } catch { /* hors ligne : on garde ce que l'on sait */ }
+    };
+    document.addEventListener('visibilitychange', back);
+    return () => document.removeEventListener('visibilitychange', back);
+  }, []);
 
   const role = state.me?.role;
   const value = useMemo<Club>(() => ({
@@ -142,6 +176,15 @@ export async function listChampionships(): Promise<Championship[]> {
 }
 export async function listMembers(): Promise<Member[]> {
   return (await api.select<Member>('club_members')).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+/** Comptes de la suite ; null tant que 002_club_accounts.sql n'est pas exécuté. */
+export async function listAccounts(): Promise<Account[] | null> {
+  try {
+    return await api.rpc<Account[]>('club_accounts');
+  } catch (e) {
+    if (e instanceof MissingRpc) return null;
+    throw e;
+  }
 }
 /** Découpage : une adresse trop longue serait refusée. */
 async function selectIn<T>(table: 'club_entries' | 'club_knockouts', ids: string[]): Promise<T[]> {

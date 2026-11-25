@@ -23,7 +23,18 @@ select club_bootstrap_admin('adresse-du-compte', 'Nom affiché');
 ```
 
 La réponse doit être « Administrateur enregistré. ». Les autres rôles se donnent
-ensuite depuis l'application, page **Adhérents**.
+ensuite depuis l'application : **Adhérents**, carte **Gestion du club**, **Nommer un gestionnaire**.
+
+## 2 bis. Valider les nouveaux comptes
+
+Dans l'éditeur SQL, exécute ensuite `supabase/002_club_accounts.sql` (une fois) :
+
+- les comptes PPC Poker Tools existants, à l'adresse confirmée, deviennent adhérents ;
+- un compte créé ensuite attend qu'un gestionnaire ou un administrateur le valide, depuis
+  **Adhérents**. D'ici là, il n'ouvre ni Le Club, ni le Range Editor, ni le Trainer.
+
+Le script se termine par un bilan : `outils_proteges` doit valoir 2. Sans lui, la suite
+marche comme avant. Si tu relances un jour `001_club.sql`, relance-le juste après.
 
 ## 3. Autoriser le lien « mot de passe oublié »
 
@@ -37,8 +48,9 @@ publique du module, par exemple `https://<domaine de la suite>/club/`.
 3. **Championnats** : crée la saison et vérifie le barème de points.
 4. **Tournois** : programme la première manche.
 
-Chaque adhérent se connecte avec son compte de la suite, demande son rattachement
-(page Compte), et un organisateur valide en choisissant sa fiche.
+Une personne crée son compte, confirme son adresse, et peut indiquer son nom (page Compte).
+Un gestionnaire ou un administrateur la valide dans **Adhérents**, en choisissant sa fiche
+si elle en a déjà une. Un administrateur peut lui donner un rôle au même moment.
 
 ## Rôles
 
@@ -46,10 +58,15 @@ Chaque adhérent se connecte avec son compte de la suite, demande son rattacheme
 | --- | --- |
 | Visiteur | voir les championnats et tournois « publics » |
 | Adhérent | tout consulter (sauf brouillons et règlements), s'inscrire, se désinscrire |
-| Organisateur | gérer championnats, tournois, horloge, éliminations, structures, adhérents |
-| Administrateur | en plus, attribuer les rôles et détacher un compte |
+| Gestionnaire | gérer championnats, tournois, horloge, éliminations, structures, adhérents |
+| Administrateur | en plus, nommer et retirer gestionnaires et administrateurs, détacher un compte |
 
-Ces droits sont appliqués par la base elle-même (RLS), pas seulement par l'écran.
+Ces droits sont appliqués par la base elle-même (RLS), pas seulement par l'écran. Les
+adresses des adhérents ne sont montrées qu'aux administrateurs ; celles des comptes à
+valider, à toute l'équipe.
+
+Détacher un compte ou supprimer sa fiche le remet « à valider ». Un ancien adhérent, lui,
+garde les outils mais n'entre plus dans l'espace du club.
 
 ## Le soir du tournoi
 
@@ -62,7 +79,7 @@ Ces droits sont appliqués par la base elle-même (RLS), pas seulement par l'éc
 5. Quand il ne reste qu'un joueur : **Valider le classement**. Les points du
    championnat se calculent seuls.
 
-Raccourcis de l'écran d'horloge (organisateur) : espace = lancer ou arrêter, flèches
+Raccourcis de l'écran d'horloge (gestionnaire) : espace = lancer ou arrêter, flèches
 gauche et droite = niveau précédent ou suivant, haut et bas = plus ou moins une minute.
 
 L'horloge avance toute seule sur chaque écran : une coupure du réseau ne l'arrête

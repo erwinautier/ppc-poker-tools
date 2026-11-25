@@ -220,7 +220,7 @@ function Form({ id, initial, structures, championships, started }: { id?: string
           )}
         </div>
 
-        {!id && <div className="card"><Switch label="Ouvrir les inscriptions tout de suite" hint="Sinon, le tournoi reste un brouillon visible des seuls organisateurs" checked={publish} onChange={setPublish} /></div>}
+        {!id && <div className="card"><Switch label="Ouvrir les inscriptions tout de suite" hint="Sinon, le tournoi reste un brouillon visible des seuls gestionnaires" checked={publish} onChange={setPublish} /></div>}
         <div className="row end">
           <a className="btn" href={id ? `#/t/${id}` : '#/tournois'}>Annuler</a>
           <button className="btn primary" disabled={busy || !d.name.trim()}>{id ? 'Enregistrer' : publish ? 'Créer et publier' : 'Créer le brouillon'}</button>

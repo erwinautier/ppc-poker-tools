@@ -4,7 +4,8 @@ import { generateLevels, niceBlinds, estimateMinutes, PRESETS } from '../src/lib
 import { autoPercents, chipCount, finalRows, outcomes, payouts, replay } from '../src/lib/engine';
 import { placePoints, points, standings } from '../src/lib/scoring';
 import { advise, breakTable, draw, placeOne, tablesOf } from '../src/lib/seating';
-import { DEFAULT_SCORING, withSettings, type Entry, type Knockout, type Level, type Settings, type Tournament } from '../src/lib/types';
+import { accountName, nameScore, waitingAccounts } from '../src/lib/accounts';
+import { DEFAULT_SCORING, clubTeam, isLastAdmin, withSettings, type Entry, type Knockout, type Level, type Account, type Member, type Settings, type Tournament } from '../src/lib/types';
 
 const L = (bb: number, minutes = 10): Level => ({ kind: 'level', sb: bb / 2, bb, ante: 0, minutes });
 const B = (minutes = 5): Level => ({ kind: 'break', sb: 0, bb: 0, ante: 0, minutes });
@@ -286,5 +287,39 @@ describe('tables', () => {
     expect(after.some(e => e.table_no === no)).toBe(false);
     expect(new Set(after.map(e => `${e.table_no}-${e.seat_no}`)).size).toBe(15);
     expect(breakTable(seated(16, 8), 1, 8)).toBeNull();
+  });
+});
+
+describe('équipe du club', () => {
+  const m = (id: string, over: Partial<Member> = {}): Member => ({ id, user_id: `u-${id}`, name: id, role: 'member', active: true, created_at: '', ...over });
+  it('administrateurs d\'abord, sans les anciens ni les adhérents', () => {
+    const list = [m('Zoé', { role: 'director' }), m('Bob'), m('Yan', { role: 'admin' }), m('Ève', { role: 'director' }), m('Parti', { role: 'admin', active: false })];
+    expect(clubTeam(list).map(x => x.id)).toEqual(['Yan', 'Ève', 'Zoé']);
+  });
+  it('le dernier administrateur : actif et avec un compte', () => {
+    const a = m('a', { role: 'admin' });
+    expect(isLastAdmin([a, m('b', { role: 'director' })], a)).toBe(true);
+    expect(isLastAdmin([a, m('b', { role: 'admin' })], a)).toBe(false);
+    expect(isLastAdmin([a, m('b', { role: 'admin', user_id: null })], a)).toBe(true);
+    expect(isLastAdmin([a, m('b', { role: 'admin', active: false })], a)).toBe(true);
+    const paper = m('p', { role: 'admin', user_id: null });
+    expect(isLastAdmin([paper], paper)).toBe(false);
+  });
+});
+
+describe('comptes à valider', () => {
+  const a = (user_id: string, over: Partial<Account> = {}): Account => ({ user_id, username: user_id, asked: null, email: null, confirmed: true, created_at: '2026-11-01', member_id: null, refused: false, ...over });
+  it('ni les adhérents, ni les refusés ; adresses confirmées d\'abord, puis les plus récents', () => {
+    const list = [a('vieux'), a('flou', { confirmed: false, created_at: '2026-12-01' }), a('neuf', { created_at: '2026-11-20' }), a('membre', { member_id: 'm' }), a('non', { refused: true })];
+    expect(waitingAccounts(list).map(x => x.user_id)).toEqual(['neuf', 'vieux', 'flou']);
+  });
+  it('le nom indiqué au club passe avant le pseudo', () => {
+    expect([accountName({ asked: 'Léa Riou', username: 'lea22' }), accountName({ asked: null, username: 'lea22' }), accountName({ asked: null, username: null })]).toEqual(['Léa Riou', 'lea22', 'Sans pseudo']);
+  });
+  it('propose la fiche au nom proche, accents compris', () => {
+    expect(nameScore('gwendal salaun', 'Gwendal Salaün')).toBe(2);
+    expect(nameScore('Gwendal', 'Gwendal Salaün')).toBe(1);
+    expect(nameScore('Zoé', 'Gwendal Salaün')).toBe(0);
+    expect(nameScore('♠', '♥')).toBe(0);
   });
 });

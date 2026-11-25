@@ -5,15 +5,18 @@
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { NotInstalled, messageOf, type Api } from '../src/lib/api';
-import { DEFAULT_SCORING, DEFAULT_SETTINGS, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from '../src/lib/types';
+import { MissingRpc, NotInstalled, messageOf, type Api } from '../src/lib/api';
+import { DEFAULT_SCORING, DEFAULT_SETTINGS, type Account, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from '../src/lib/types';
 import { generateLevels, PRESETS, DEFAULT_CHIPS } from '../src/lib/structure';
 
 const SQL = readFileSync(new URL('../supabase/001_club.sql', import.meta.url), 'utf8');
+const SQL2 = readFileSync(new URL('../supabase/002_club_accounts.sql', import.meta.url), 'utf8');
 const USERS: Record<string, string> = {
   admin: '00000000-0000-0000-0000-0000000000b1',
   alice: '00000000-0000-0000-0000-0000000000b2',
   zoe: '00000000-0000-0000-0000-0000000000b3',
+  tom: '00000000-0000-0000-0000-0000000000b4',
+  lea: '00000000-0000-0000-0000-0000000000b5',
 };
 let db: PGlite;
 let api: Api;
@@ -93,10 +96,14 @@ beforeAll(async () => {
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
     create schema auth; grant usage on schema auth, public to anon, authenticated;
-    create table auth.users (id uuid primary key, email text);
+    create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz default now(), created_at timestamptz default now());
+    create table public.profiles (id uuid primary key references auth.users (id) on delete cascade, username text);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant execute on function auth.uid() to anon, authenticated;`);
-  for (const [k, v] of Object.entries(USERS)) await db.query('insert into auth.users values ($1, $2)', [v, `${k}@exemple.test`]);
+  for (const [k, v] of Object.entries(USERS).filter(([k]) => k !== 'lea')) {
+    await db.query('insert into auth.users (id, email) values ($1, $2)', [v, `${k}@exemple.test`]);
+    await db.query('insert into profiles values ($1, $2)', [v, `pseudo-${k}`]);
+  }
   vi.stubGlobal('fetch', relay);
   vi.stubGlobal('location', { origin: 'http://localhost' });
   const { createSupabaseApi } = await import('../src/lib/supabaseApi');
@@ -144,8 +151,8 @@ it('une saison complète, avec les données exactes que l\'application envoie', 
   await api.rpc('club_approve_request', { p_user: USERS.alice, p_member: alice.id });
   await login('alice');
   expect(await api.rpc('club_register', { p_tournament: t.id })).toBe('registered');
-  await expect(api.update('club_tournaments', t.id, { name: 'Piraté' })).rejects.toThrow(/organisateurs/);
-  await expect(api.insert('club_entries', { tournament_id: t.id, name: 'x', member_id: null, status: 'registered' }).catch(e => { throw new Error(messageOf(e)); })).rejects.toThrow(/organisateurs/);
+  await expect(api.update('club_tournaments', t.id, { name: 'Piraté' })).rejects.toThrow(/gestionnaires/);
+  await expect(api.insert('club_entries', { tournament_id: t.id, name: 'x', member_id: null, status: 'registered' }).catch(e => { throw new Error(messageOf(e)); })).rejects.toThrow(/gestionnaires/);
 
   // Refus d'une demande
   await login('zoe');
@@ -204,6 +211,66 @@ it('une saison complète, avec les données exactes que l\'application envoie', 
   expect((await api.select<Tournament>('club_tournaments'))[0].championship_id).toBeNull();
   await api.remove('club_tournaments', t.id);
   expect(await api.select('club_entries')).toEqual([]);
+});
+
+it('nommer un gestionnaire : en validant sa demande, puis depuis sa fiche', async () => {
+  const said = (p: Promise<unknown>) => p.then(() => 'accepté', e => messageOf(e));
+  await login('zoe');
+  await api.rpc('club_request_join', { p_name: 'Zoé' });
+  await login('admin');
+  const zoe = await api.rpc<string>('club_approve_request', { p_user: USERS.zoe, p_member: null });
+  await api.update('club_members', zoe, { role: 'director' });
+  const [me] = await api.select<Member>('club_members', { eq: { user_id: USERS.admin } });
+  const [alice] = await api.select<Member>('club_members', { eq: { user_id: USERS.alice } });
+
+  await login('zoe');
+  expect((await api.select<Member>('club_members', { eq: { user_id: USERS.zoe } }))[0].role).toBe('director');
+  const [t] = await api.insert<Tournament>('club_tournaments', { name: 'Soirée de Zoé', starts_at: new Date().toISOString() });
+  await api.update('club_members', alice.id, { name: 'Alice B.' });
+  expect(await said(api.update('club_members', alice.id, { role: 'director' }))).toBe('Seul un administrateur peut modifier un gestionnaire.');
+  expect(await said(api.update('club_members', zoe, { role: 'admin' }))).toBe('Seul un administrateur peut modifier un gestionnaire.');
+  expect(await said(api.remove('club_members', me.id))).toMatch(/Seul un administrateur/);
+
+  await login('admin');
+  expect(await said(api.update('club_members', me.id, { role: 'member' }))).toBe('Le club doit garder au moins un administrateur.');
+  await api.update('club_members', zoe, { role: 'admin' });
+  await api.update('club_members', me.id, { role: 'director' });
+  await login('zoe');
+  await api.update('club_members', me.id, { role: 'admin' });
+  await api.update('club_members', zoe, { role: 'member' });
+  expect(await said(api.update('club_tournaments', t.id, { name: 'x' }))).toBe('Action réservée aux gestionnaires.');
+  expect(await said(api.rpc('club_set_clock', { p_tournament: t.id, p_level: 0, p_elapsed_ms: 0, p_running: true }))).toBe('Action réservée aux gestionnaires.');
+  await login('admin');
+  await api.remove('club_tournaments', t.id);
+});
+
+it('validation des comptes, avant puis après le second script', async () => {
+  await login('admin');
+  await expect(api.rpc('club_accounts')).rejects.toBeInstanceOf(MissingRpc);
+  await expect(api.rpc('club_account_status')).rejects.toBeInstanceOf(MissingRpc);
+  await db.exec(SQL2);
+  expect((await api.rpc<Account[]>('club_accounts')).every(a => a.member_id)).toBe(true);
+  expect(await api.rpc('club_pending_count')).toBe(0);
+
+  // Un compte créé après la mise en place
+  await db.query('insert into auth.users (id, email) values ($1, $2)', [USERS.lea, 'lea@exemple.test']);
+  await db.query('insert into profiles values ($1, $2)', [USERS.lea, 'lea22']);
+  await login('lea');
+  expect(await api.rpc('club_account_status')).toBe('pending');
+  await api.rpc('club_request_join', { p_name: 'Léa Riou' });
+  await login('admin');
+  expect(await api.rpc('club_pending_count')).toBe(1);
+  expect((await api.rpc<Account[]>('club_accounts')).find(a => !a.member_id)).toMatchObject({ user_id: USERS.lea, username: 'lea22', asked: 'Léa Riou', email: 'lea@exemple.test', confirmed: true, refused: false });
+  await api.rpc('club_refuse_account', { p_user: USERS.lea, p_refuse: true });
+  await login('lea');
+  expect(await api.rpc('club_account_status')).toBe('refused');
+  await login('admin');
+  await api.rpc('club_refuse_account', { p_user: USERS.lea, p_refuse: false });
+  const id = await api.rpc<string>('club_validate_account', { p_user: USERS.lea, p_member: null, p_name: 'Léa Riou', p_role: 'director' });
+  expect((await api.select<Member>('club_members', { eq: { user_id: USERS.lea } }))[0]).toMatchObject({ id, name: 'Léa Riou', role: 'director', active: true });
+  await login('lea');
+  expect(await api.rpc('club_account_status')).toBe('ok');
+  expect((await api.rpc<Account[]>('club_accounts')).every(a => a.email === null)).toBe(true);
 });
 
 it('se déconnecter ne ferme la session que sur cet appareil', async () => {

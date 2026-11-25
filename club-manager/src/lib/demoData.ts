@@ -1,6 +1,6 @@
 /** Club fictif du mode démo. Tous les noms sont inventés. */
 import { generateLevels, PRESETS, DEFAULT_CHIPS } from './structure';
-import { DEFAULT_SCORING, withSettings, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from './types';
+import { DEFAULT_SCORING, withSettings, type Account, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from './types';
 
 export interface DemoDb {
   club_members: Member[];
@@ -11,6 +11,8 @@ export interface DemoDb {
   club_entries: Entry[];
   club_payments: Payment[];
   club_knockouts: Knockout[];
+  refused: string[];
+  accounts: Pick<Account, 'user_id' | 'username' | 'email' | 'confirmed' | 'created_at'>[];
   seq: number;
 }
 
@@ -34,7 +36,7 @@ function shuffled<T>(a: T[], r: () => number): T[] {
   return b;
 }
 
-export const DEMO_USERS = { admin: 'demo-user-0', member: 'demo-user-3' };
+export const DEMO_USERS = { admin: 'demo-user-0', director: 'demo-user-1', member: 'demo-user-3', pending: 'demo-user-91' };
 
 export function seedDemo(now: number): DemoDb {
   const r = rng(22);
@@ -149,6 +151,15 @@ export function seedDemo(now: number): DemoDb {
     club_entries: entries,
     club_payments: payments,
     club_knockouts: knockouts,
+    refused: ['demo-user-94'],
+    accounts: [
+      ...members.filter(m => m.user_id).map((m, i) => ({ user_id: m.user_id!, username: m.name.split(' ')[0], email: `adherent${i + 1}@exemple.test`, confirmed: true, created_at: iso(now - (180 - i) * DAY) })),
+      { user_id: 'demo-user-90', username: 'Ewen', email: 'ewen@exemple.test', confirmed: true, created_at: iso(now - DAY) },
+      { user_id: 'demo-user-91', username: 'Tifenn', email: 'pending@exemple.test', confirmed: true, created_at: iso(now - 3 * 3_600_000) },
+      { user_id: 'demo-user-92', username: 'Gwendal', email: 'gwendal@exemple.test', confirmed: true, created_at: iso(now - 4 * DAY) },
+      { user_id: 'demo-user-93', username: 'Goulven29', email: 'goulven@exemple.test', confirmed: false, created_at: iso(now - 2 * DAY) },
+      { user_id: 'demo-user-94', username: 'Essai', email: 'essai@exemple.test', confirmed: true, created_at: iso(now - 80 * DAY) },
+    ],
     seq,
   };
 }

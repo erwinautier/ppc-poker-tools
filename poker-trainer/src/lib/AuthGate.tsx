@@ -25,7 +25,7 @@ function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
         if (!username.trim()) { setError('Choisis un pseudo'); return; }
         const err = await signUp(email, password, username.trim());
         if (err) setError(err.message);
-        else setInfo('Inscription réussie ! Vérifie ton email pour confirmer ton compte.');
+        else setInfo('Inscription réussie ! Vérifie ton email pour confirmer ton compte. Le club le validera ensuite.');
       } else {
         const err = await resetPassword(email);
         if (err) setError(err.message);
@@ -143,6 +143,51 @@ const linkStyle: React.CSSProperties = {
   color: 'var(--accent)', fontSize: '0.8rem', textDecoration: 'underline',
 };
 
+function WaitingScreen({ refused, signOut }: { refused: boolean; signOut: () => void }) {
+  return (
+    <div style={{
+      minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--bg)', padding: '1rem',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: 380, textAlign: 'center',
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 12, padding: '2rem',
+      }}>
+        <img
+          src={`${import.meta.env.BASE_URL}logo-ppc.png`}
+          alt="PPC"
+          style={{ display: 'block', height: 48, borderRadius: 8, margin: '0 auto 0.75rem' }}
+        />
+        <h1 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem', margin: 0 }}>
+          {refused ? 'Compte non validé' : 'Compte en attente de validation'}
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.5, margin: '0.75rem 0 1.25rem' }}>
+          {refused
+            ? "Le Penthièvre Poker Club n'a pas validé ce compte. Si c'est une erreur, contacte le bureau du club."
+            : 'Un administrateur ou un gestionnaire du Penthièvre Poker Club doit valider ton compte. Tu pourras ensuite utiliser tous les outils.'}
+        </p>
+        {!refused && (
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              width: '100%', padding: '0.65rem', borderRadius: 8, border: 'none',
+              background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 600,
+              cursor: 'pointer', fontSize: '0.9rem',
+            }}
+          >
+            Vérifier à nouveau
+          </button>
+        )}
+        <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'center' }}>
+          {!refused && <a href="/club/#/compte" style={linkStyle}>Indiquer mon nom au club</a>}
+          <button onClick={signOut} style={linkStyle}>Se déconnecter</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const { state, signOut } = useAuth();
 
@@ -156,6 +201,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (state.status === 'unauthenticated') {
     return <AuthForm />;
+  }
+
+  if (state.status === 'pending' || state.status === 'refused') {
+    return <WaitingScreen refused={state.status === 'refused'} signOut={signOut} />;
   }
 
   // Inject signOut + username into children via context

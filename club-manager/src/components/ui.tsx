@@ -129,7 +129,10 @@ export function Modal({ title, onClose, children, small, wide }: { title: string
   const titleId = useId();
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
-    const on = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close.current(); } };
+    const on = (e: KeyboardEvent) => {
+      // Deux fenêtres empilées : Échap ne ferme que celle du dessus.
+      if (e.key === 'Escape' && [...document.querySelectorAll('.modal')].at(-1) === ref.current) { e.stopPropagation(); close.current(); }
+    };
     document.addEventListener('keydown', on);
     document.body.classList.add('modal-open');
     if (!ref.current?.contains(document.activeElement)) ref.current?.focus();

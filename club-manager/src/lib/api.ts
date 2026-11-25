@@ -17,7 +17,8 @@ export type TableName =
 
 export type Rpc =
   | 'club_request_join' | 'club_approve_request' | 'club_register' | 'club_unregister'
-  | 'club_set_clock' | 'club_save_seats' | 'club_finish' | 'club_reopen';
+  | 'club_set_clock' | 'club_save_seats' | 'club_finish' | 'club_reopen'
+  | 'club_account_status' | 'club_accounts' | 'club_pending_count' | 'club_validate_account' | 'club_refuse_account';
 
 export interface Api {
   kind: 'cloud' | 'demo';
@@ -41,16 +42,25 @@ export interface Api {
 
 /** Les tables n'existent pas encore : le script SQL n'a pas été exécuté. */
 export class NotInstalled extends Error {}
+/** La fonction manque : un script SQL plus récent reste à exécuter. */
+export class MissingRpc extends Error {}
+
+/** Colonne qui identifie une ligne. */
+export const keyOf = (table: TableName) =>
+  table === 'club_payments' ? 'entry_id' : table === 'club_join_requests' ? 'user_id' : 'id';
 
 export function messageOf(e: unknown): string {
   const raw = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
   if (/failed to fetch|networkerror|load failed/i.test(raw)) return 'Pas de connexion : la modification n\'est pas enregistrée.';
-  if (/row-level security|permission denied/i.test(raw)) return 'Action réservée aux organisateurs.';
+  if (/row-level security|permission denied/i.test(raw)) return 'Action réservée aux gestionnaires.';
+  // Les messages de 001_club.sql datent d'avant le nom « gestionnaire ».
+  if (/réservé aux organisateurs/i.test(raw)) return 'Action réservée aux gestionnaires.';
+  if (e instanceof MissingRpc) return 'La base n\'est pas à jour : un administrateur doit exécuter le dernier script SQL (SETUP.md).';
   if (/club_knockouts_out/i.test(raw)) return 'Ce joueur est déjà éliminé.';
   if (/club_entries_tournament_id_member_id_key/i.test(raw)) return 'Cet adhérent est déjà inscrit.';
   if (/invalid login credentials/i.test(raw)) return 'Adresse ou mot de passe incorrect.';
   if (/email not confirmed/i.test(raw)) return 'Adresse non confirmée : ouvre le lien reçu par e-mail.';
   if (/user already registered/i.test(raw)) return 'Un compte existe déjà avec cette adresse.';
   if (/for security purposes|rate limit/i.test(raw)) return 'Trop de demandes : patiente une minute avant de réessayer.';
-  return raw;
+  return raw.replace('un organisateur.', 'un gestionnaire.');
 }

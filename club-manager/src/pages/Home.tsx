@@ -5,7 +5,7 @@ import { Empty, State } from '../components/ui';
 import { LiveTicket, TournamentRow } from '../components/cards';
 
 export function Home() {
-  const { me, user, request, isStaff } = useClub();
+  const { me, user, account, pending, request, isStaff } = useClub();
   const q = useLoad(async () => {
     const [tournaments, championships] = await Promise.all([listTournaments(), listChampionships()]);
     const active = championships.filter(c => c.status === 'active').slice(0, 2);
@@ -32,8 +32,17 @@ export function Home() {
       {!user && <div className="card note row between"><span>Adhérent du club ? Connecte-toi pour t'inscrire et voir toutes les soirées.</span><a className="btn primary" href="#/compte">Se connecter</a></div>}
       {user && !me && (
         <div className="card note row between">
-          <span>{request ? 'Ta demande de rattachement est entre les mains du bureau.' : 'Dernière étape : rattache ton compte à ta fiche d\'adhérent.'}</span>
-          {!request && <a className="btn primary" href="#/compte">Rattacher mon compte</a>}
+          <span>{account === 'ok' ? 'Ta fiche d\'adhérent n\'est plus active : contacte le bureau.'
+            : account === 'refused' ? 'Le club n\'a pas validé ce compte.'
+            : request ? 'Ton compte attend la validation du club, qui a bien reçu ton nom.'
+            : 'Ton compte attend la validation du club. Indique ton nom pour qu\'on te reconnaisse.'}</span>
+          {!request && account !== 'ok' && account !== 'refused' && <a className="btn primary" href="#/compte">Indiquer mon nom</a>}
+        </div>
+      )}
+      {pending > 0 && (
+        <div className="card note row between">
+          <span>{pending > 1 ? `${pending} nouveaux comptes attendent` : 'Un nouveau compte attend'} la validation du club.</span>
+          <a className="btn primary" href="#/adherents">{pending > 1 ? 'Voir les comptes' : 'Voir le compte'}</a>
         </div>
       )}
 
