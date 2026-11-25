@@ -18,7 +18,11 @@ export type TableName =
 export type Rpc =
   | 'club_request_join' | 'club_approve_request' | 'club_register' | 'club_unregister'
   | 'club_set_clock' | 'club_save_seats' | 'club_finish' | 'club_reopen'
-  | 'club_account_status' | 'club_accounts' | 'club_pending_count' | 'club_validate_account' | 'club_refuse_account';
+  | 'club_account_status' | 'club_accounts' | 'club_pending_count' | 'club_validate_account' | 'club_refuse_account'
+  | 'club_bar_load' | 'club_bar_detail' | 'club_bar_report' | 'club_bar_counter' | 'club_bar_take' | 'club_bar_undo'
+  | 'club_bar_declare' | 'club_bar_withdraw' | 'club_bar_decide' | 'club_bar_receive' | 'club_bar_adjust'
+  | 'club_bar_remind' | 'club_bar_seen' | 'club_bar_save_item' | 'club_bar_move_item' | 'club_bar_save_settings'
+  | 'club_bar_kiosks' | 'club_bar_create_kiosk' | 'club_bar_revoke_kiosk';
 
 export interface Api {
   kind: 'cloud' | 'demo';
@@ -38,12 +42,19 @@ export interface Api {
   rpc<T = void>(fn: Rpc, args?: object): Promise<T>;
   /** Prévient à chaque changement d'un tournoi (inscriptions et éliminations comprises). */
   watch(cb: (tournamentId: string | null) => void): () => void;
+  /** Prévient à chaque changement de la buvette. */
+  watchBar(cb: () => void): () => void;
 }
 
 /** Les tables n'existent pas encore : le script SQL n'a pas été exécuté. */
 export class NotInstalled extends Error {}
+/** Réponse d'erreur de la base, avec son code. */
+export class DbError extends Error {
+  code: string | undefined;
+  constructor(message: string, code?: string) { super(message); this.code = code; }
+}
 /** La fonction manque : un script SQL plus récent reste à exécuter. */
-export class MissingRpc extends Error {}
+export class MissingRpc extends DbError {}
 
 /** Colonne qui identifie une ligne. */
 export const keyOf = (table: TableName) =>

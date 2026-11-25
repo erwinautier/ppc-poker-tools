@@ -11,6 +11,7 @@ import { generateLevels, PRESETS, DEFAULT_CHIPS } from '../src/lib/structure';
 
 const SQL = readFileSync(new URL('../supabase/001_club.sql', import.meta.url), 'utf8');
 const SQL2 = readFileSync(new URL('../supabase/002_club_accounts.sql', import.meta.url), 'utf8');
+const SQL3 = readFileSync(new URL('../supabase/003_club_bar.sql', import.meta.url), 'utf8');
 const USERS: Record<string, string> = {
   admin: '00000000-0000-0000-0000-0000000000b1',
   alice: '00000000-0000-0000-0000-0000000000b2',
@@ -25,7 +26,9 @@ const logouts: (string | null)[] = [];
 const id = (s: string) => `"${s.replace(/"/g, '')}"`;
 const json = (body: unknown, status = 200) => new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
+let offline = false;
 async function relay(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (offline) throw new TypeError('fetch failed');
   const req = new Request(input, init);
   const url = new URL(req.url);
   if (!url.hostname.endsWith('.supabase.co')) throw new Error(`appel inattendu : ${url.hostname}`);
@@ -287,4 +290,135 @@ it('au-delà de 1 000 lignes, rien ne manque', async () => {
   await db.query(`insert into club_entries (tournament_id, name) select $1, 'J' || i from generate_series(1, 2345) i`, [t.id]);
   const list = await api.select<Entry>('club_entries', { eq: { tournament_id: t.id }, order: ['registered_at', 'asc'] });
   expect(new Set(list.map(e => e.id)).size).toBe(2345);
+});
+
+it('la buvette : consos, paiements, coupure de réseau et tablette', async () => {
+  const listeners: Record<string, () => void> = {};
+  const lost: string[] = [];
+  const store = new Map<string, string>();
+  vi.stubGlobal('window', { addEventListener: (k: string, f: () => void) => { listeners[k] = f; }, dispatchEvent: (e: CustomEvent<string>) => { lost.push(e.detail); } });
+  vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); }, removeItem: (k: string) => { store.delete(k); } });
+  vi.stubGlobal('CustomEvent', class { detail: unknown; constructor(_: string, o: { detail: unknown }) { this.detail = o.detail; } });
+  const { createCloudBar } = await import('../src/lib/cloudBar');
+  const { setKiosk, leaveKiosk } = await import('../src/lib/kiosk');
+  const bar = createCloudBar(api);
+  const said = (x: Promise<unknown>) => x.then(() => 'accepté', e => messageOf(e));
+  const settle = () => new Promise(f => setTimeout(f, 120));
+
+  // Avant le script : absente, sans erreur.
+  await login('admin');
+  expect(await bar.load()).toBeNull();
+  await db.exec(SQL3);
+
+  // Tarifs, trésorerie
+  await bar.saveItem({ name: 'Café', emoji: '☕', price: 50, active: true });
+  await bar.saveItem({ name: 'Bière', emoji: '🍺', price: 200, active: true });
+  const d0 = (await bar.load())!;
+  expect(d0.items.map(i => [i.name, i.price])).toEqual([['Café', 50], ['Bière', 200]]);
+  const [cafe, biere] = d0.items;
+  const [alice] = await api.select<Member>('club_members', { eq: { user_id: USERS.alice } });
+  await api.update('club_members', alice.id, { treasurer: true });
+  expect((await api.select<Member>('club_members', { eq: { user_id: USERS.alice } }))[0].treasurer).toBe(true);
+  await api.update('club_members', alice.id, { treasurer: false });
+
+  // Une adhérente consomme, se trompe, paie.
+  await login('alice');
+  const { id } = await bar.take(alice.id, cafe);
+  expect((await bar.take(alice.id, biere, true)).queued).toBe(false);
+  await bar.undo(id);
+  let a = (await bar.load())!;
+  expect([a.manage, a.team, a.slate.due, a.slate.open, a.lines.map(l => [l.label, l.guest, !!l.cancelled_at])]).toEqual([false, null, 200, 200, [['Bière', true, false], ['Café', false, true]]]);
+  const [me] = (await api.select<Member>('club_members', { eq: { user_id: USERS.admin } }));
+  expect(await said(bar.take(me.id, cafe))).toBe('Tu ne peux noter que tes propres consommations.');
+  expect(await said(bar.report(0))).toMatch(/gestionnaires/);
+  await bar.declare(200, 'cash');
+  a = (await bar.load())!;
+  expect([a.slate.due, a.slate.open, a.payments[0].status]).toEqual([200, 0, 'pending']);
+
+  // Réseau coupé : rien ne se perd, l'ardoise affichée en tient compte.
+  offline = true;
+  expect((await bar.take(alice.id, cafe)).queued).toBe(true);
+  const oops = await bar.take(alice.id, biere);
+  a = (await bar.load())!;
+  expect([a.queued, a.slate.due, a.lines.filter(l => l.queued).map(l => l.label).sort()]).toEqual([2, 450, ['Bière', 'Café']]);
+  await bar.undo(oops.id);
+  a = (await bar.load())!;
+  expect([a.queued, a.slate.due]).toEqual([1, 250]);
+  expect(await said(bar.declare(100, 'cash'))).not.toBe('accepté');
+  expect([...store.keys()]).toContain(`ppc-bar-queue-${USERS.alice}`);
+  offline = false;
+  listeners.online();
+  await settle();
+  a = (await bar.load())!;
+  expect([a.queued, a.slate.due, a.lines.filter(l => l.label === 'Café' && !l.cancelled_at).length]).toEqual([0, 250, 1]);
+
+  // Les consos d'une personne ne partent jamais sous le nom d'une autre.
+  offline = true;
+  await bar.take(alice.id, cafe);
+  offline = false;
+  await login('admin');
+  listeners.online();
+  await settle();
+  expect((await bar.load())!.queued).toBe(0);
+  await login('alice');
+  expect((await bar.load())!.queued).toBe(1);
+  listeners.online();
+  await settle();
+  expect((await bar.load())!.slate.due).toBe(300);
+
+  // Un produit retiré pendant la coupure : la conso est refusée, et on le dit.
+  offline = true;
+  await bar.take(alice.id, biere);
+  offline = false;
+  await login('admin');
+  await bar.saveItem({ ...biere, active: false });
+  await login('alice');
+  listeners.online();
+  await settle();
+  expect([(await bar.load())!.queued, lost]).toEqual([0, ['Bière : Ce produit n\'est plus proposé.']]);
+
+  // L'équipe valide, encaisse, corrige, relance, compte.
+  await login('admin');
+  const team = (await bar.load())!.team!;
+  expect([team.slates.map(s => [s.name, s.due]), team.pending.map(x => x.amount)]).toEqual([[['Alice B.', 300]], [200]]);
+  await bar.decide(team.pending[0].id, true);
+  await bar.receive(alice.id, 50, 'transfer');
+  await bar.adjust(alice.id, 125, 'Reprise du tableau papier');
+  expect(await bar.remind([alice.id])).toBe(1);
+  expect((await bar.detail(alice.id)).payments.map(x => [x.amount, x.method, x.decided_by])).toEqual([[50, 'transfer', 'Admin'], [200, 'cash', 'Admin']]);
+  expect(await bar.report(0)).toEqual([{ label: 'Bière', count: 1, amount: 200, guests: 1 }, { label: 'Café', count: 2, amount: 100, guests: 0 }]);
+  await bar.saveSettings({ alert: 100, days: 10, payInfo: 'Caisse' });
+  await login('alice');
+  a = (await bar.load())!;
+  expect([a.slate.due, a.slate.reminder?.seen_at, a.settings.alert]).toEqual([175, null, 100]);
+  await bar.seen();
+  expect((await bar.load())!.slate.reminder?.seen_at).toBeTruthy();
+
+  // La tablette : sans compte, avec sa clé, même après une coupure.
+  await login('admin');
+  const k = await bar.createKiosk('Bar');
+  expect((await bar.kiosks()).map(x => x.name)).toEqual(['Bar']);
+  await api.signOut();
+  expect(await bar.load()).toBeNull();
+  setKiosk(k);
+  const tally = async () => (await bar.counter()).tally.filter(t => t.member_id === me.id).map(t => t.n);
+  expect(await tally()).toEqual([]);
+  const first = await bar.take(me.id, cafe);
+  await bar.take(me.id, cafe);
+  expect(await tally()).toEqual([2]);
+  await bar.undo(first.id);
+  expect(await tally()).toEqual([1]);
+  offline = true;
+  expect((await bar.take(me.id, cafe)).queued).toBe(true);
+  expect([await tally(), (await bar.counter()).queued]).toEqual([[2], 1]);
+  offline = false;
+  listeners.online();
+  await settle();
+  expect([await tally(), (await bar.counter()).queued]).toEqual([[2], 0]);
+  await login('admin');
+  await bar.revokeKiosk((await (leaveKiosk(), bar.kiosks()))[0].id);
+  setKiosk(k);
+  expect(await said(bar.counter())).toBe('Cet accès au comptoir n\'est plus valable.');
+  leaveKiosk();
+  expect((await bar.load())!.slate.due).toBe(100);
 });

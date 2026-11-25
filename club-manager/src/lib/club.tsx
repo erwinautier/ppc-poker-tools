@@ -1,6 +1,9 @@
 /** Contexte de l'application : données, compte, rôle ; et chargements partagés. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MissingRpc, NotInstalled, messageOf, type Api, type AuthUser } from './api';
+import type { BarApi } from './bar';
+import { createCloudBar } from './cloudBar';
+import { adoptKioskLink, kioskKey, setKiosk } from './kiosk';
 import { createDemoApi, type DemoApi } from './demoApi';
 import { createSupabaseApi } from './supabaseApi';
 import { withScoring, withSettings, type Account, type AccountStatus, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Tournament } from './types';
@@ -8,6 +11,10 @@ import { withScoring, withSettings, type Account, type AccountStatus, type Champ
 export const isDemo = new URLSearchParams(location.search).has('demo');
 export const api: Api = isDemo ? createDemoApi() : createSupabaseApi();
 export const demo = isDemo ? (api as DemoApi) : null;
+// Un lien de tablette ouvre le comptoir et y reste.
+const link = adoptKioskLink();
+if (link) { if (demo) demo.setRole('kiosk'); else setKiosk(link); }
+export const bar: BarApi = demo ? demo.bar : createCloudBar(api);
 
 interface Club {
   ready: boolean;
@@ -21,6 +28,8 @@ interface Club {
   pending: number;
   isStaff: boolean;
   isAdmin: boolean;
+  /** Tablette du comptoir. */
+  kiosk: boolean;
   recovering: boolean;
   doneRecovering: () => void;
   refresh: () => Promise<void>;
@@ -98,6 +107,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     ...state,
     isStaff: role === 'director' || role === 'admin',
     isAdmin: role === 'admin',
+    kiosk: demo ? demo.role() === 'kiosk' : kioskKey() !== null,
     recovering,
     doneRecovering: () => setRecovering(false),
     refresh,

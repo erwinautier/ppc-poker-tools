@@ -3,20 +3,24 @@
  * ouverts (organisateur et écran géant, par exemple) restent synchronisés.
  */
 import { keyOf as pk, type Api, type AuthUser, type Query, type TableName } from './api';
+import type { BarApi } from './bar';
+import { createDemoBar } from './demoBar';
 import { DEMO_USERS, seedDemo, type DemoDb } from './demoData';
 import { isLastAdmin, type Entry, type Knockout, type Member, type Tournament } from './types';
 
-const KEY = 'ppc-club-demo-v2';
+const KEY = 'ppc-club-demo-v4';
 const ROLE_KEY = 'ppc-club-demo-role';
-export type DemoRole = 'admin' | 'director' | 'member' | 'pending' | 'anon';
+export type DemoRole = 'admin' | 'director' | 'treasurer' | 'member' | 'pending' | 'kiosk' | 'anon';
 
 export interface DemoApi extends Api {
   role(): DemoRole;
   setRole(r: DemoRole): void;
   reset(): void;
+  bar: BarApi;
 }
 
-const uid = () => crypto.randomUUID();
+// randomUUID n'existe pas en http sur le réseau local : la démo doit s'ouvrir sur un téléphone.
+const uid = () => crypto.randomUUID?.() ?? `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 const clone = <T>(x: T): T => structuredClone(x);
 
 export function createDemoApi(): DemoApi {
@@ -52,13 +56,16 @@ export function createDemoApi(): DemoApi {
   }
   const user = (): AuthUser | null => {
     const r = role();
-    return r === 'anon' ? null : { id: DEMO_USERS[r], email: `${r}@exemple.test` };
+    return r === 'anon' || r === 'kiosk' ? null : { id: DEMO_USERS[r], email: `${r}@exemple.test` };
   };
   const me = (): Member | undefined => load().club_members.find(m => m.user_id === user()?.id && m.active);
   const staff = () => { const r = me()?.role; return r === 'admin' || r === 'director'; };
   const needStaff = () => { if (!staff()) throw new Error('Action réservée aux gestionnaires.'); };
   /** Mêmes règles que club_members_guard ; after nul = suppression. */
   function guardMember(before: Member | null, after: Member | null) {
+    if (me()?.role !== 'admin' && (before?.treasurer || after?.treasurer)) {
+      throw new Error(before?.treasurer ? 'Seul un administrateur peut modifier la fiche de la trésorerie.' : 'Seul un administrateur confie la trésorerie.');
+    }
     if (me()?.role !== 'admin' && [before, after].some(x => x && x.role !== 'member')) {
       throw new Error(before ? 'Seul un administrateur peut modifier un gestionnaire.' : 'Seul un administrateur peut attribuer ce rôle.');
     }
@@ -79,7 +86,8 @@ export function createDemoApi(): DemoApi {
       case 'club_championships': return (row as { visibility: string }).visibility === 'public' || !!me();
       case 'club_payments': return false;
       case 'club_join_requests': return (row as { user_id: string }).user_id === user()?.id;
-      default: return !!me();
+      // Le comptoir a besoin des noms, et de rien d'autre.
+      default: return !!me() || (role() === 'kiosk' && table === 'club_members');
     }
   }
 
@@ -111,8 +119,17 @@ export function createDemoApi(): DemoApi {
     club_knockouts: () => ({ killer_ids: [], rebuy: false, level: null }),
   };
 
+  const bar = createDemoBar({
+    db: () => load().bar,
+    members: () => load().club_members,
+    actor: () => ({ me: me() ?? null, kiosk: role() === 'kiosk' }),
+    now: () => Date.now(), uid, saved: () => changed(null),
+    watch: cb => { const w = () => cb(); watchers.add(w); return () => { watchers.delete(w); }; },
+  });
+
   const api: DemoApi = {
     kind: 'demo',
+    bar,
     now: () => Date.now(),
     role,
     setRole(r) {
@@ -344,6 +361,7 @@ export function createDemoApi(): DemoApi {
     },
 
     watch(cb) { watchers.add(cb); return () => { watchers.delete(cb); }; },
+    watchBar: cb => bar.watch(cb),
   };
   return api;
 }
