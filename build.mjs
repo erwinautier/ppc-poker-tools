@@ -9,6 +9,7 @@
  *   dist/equity/    ← equity-calc build
  *   dist/tournoi/   ← hu-tournament build
  *   dist/initiation/ ← initiation build (cours pour débutants)
+ *   dist/club/       ← club-manager build (championnats, tournois, horloge)
  */
 
 import { execSync }                  from 'child_process';
@@ -34,6 +35,7 @@ run('npm install', resolve(ROOT, 'postflop-trainer'));
 run('npm install', resolve(ROOT, 'equity-calc'));
 run('npm install', resolve(ROOT, 'hu-tournament'));
 run('npm install', resolve(ROOT, 'initiation'));
+run('npm install', resolve(ROOT, 'club-manager'));
 
 // 3. Build apps
 run('npm run build', resolve(ROOT, 'range-editor'));
@@ -42,6 +44,7 @@ run('npm run build', resolve(ROOT, 'postflop-trainer'));
 run('npm run build', resolve(ROOT, 'equity-calc'));
 run('npm run build', resolve(ROOT, 'hu-tournament'));
 run('npm run build', resolve(ROOT, 'initiation'));
+run('npm run build', resolve(ROOT, 'club-manager'));
 
 // 4. Combine outputs
 cpSync(resolve(ROOT, 'range-editor',    'dist'), resolve(ROOT, 'dist', 'editor'),   { recursive: true });
@@ -50,6 +53,7 @@ cpSync(resolve(ROOT, 'postflop-trainer','dist'), resolve(ROOT, 'dist', 'postflop
 cpSync(resolve(ROOT, 'equity-calc',     'dist'), resolve(ROOT, 'dist', 'equity'),   { recursive: true });
 cpSync(resolve(ROOT, 'hu-tournament',   'dist'), resolve(ROOT, 'dist', 'tournoi'),  { recursive: true });
 cpSync(resolve(ROOT, 'initiation',      'dist'), resolve(ROOT, 'dist', 'initiation'), { recursive: true });
+cpSync(resolve(ROOT, 'club-manager',    'dist'), resolve(ROOT, 'dist', 'club'),       { recursive: true });
 cpSync(resolve(ROOT, 'hub'), resolve(ROOT, 'dist'), { recursive: true });
 
 console.log('\n✅ Build complete → dist/');
