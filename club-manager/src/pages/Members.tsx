@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { accountName, key, nameScore, waitingAccounts } from '../lib/accounts';
+import { useBar } from '../lib/barContext';
 import { api, listAccounts, listMembers, useClub, useLoad } from '../lib/club';
 import * as f from '../lib/format';
 import { ROLE_HINT, ROLE_LABEL, clubTeam, isLastAdmin, type Account, type JoinRequest, type Member, type Role } from '../lib/types';
@@ -20,6 +21,7 @@ interface Pending { user_id: string; name: string; email: string | null }
 
 export function Members() {
   const { isAdmin, me, refresh } = useClub();
+  const hasBar = !!useBar().data;
   const q = useLoad(async () => {
     const [members, requests, accounts] = await Promise.all([listMembers(), api.select<JoinRequest>('club_join_requests', { order: ['created_at', 'asc'] }), listAccounts()]);
     return { members, requests, accounts };
@@ -101,8 +103,9 @@ export function Members() {
                   <div className="prow" key={m.id}>
                     <span className="pname"><a href={`#/j/${m.id}`}>{m.name}</a>{a && <small>{accountName(a)}{a.email && `, ${a.email}`}</small>}</span>
                     {m.role !== 'member' && <span className="tag done">{ROLE_LABEL[m.role]}</span>}
+                    {hasBar && m.treasurer && <span className="tag done">Trésorerie</span>}
                     <span className={`tag ${m.user_id ? 'open' : ''}`}>{m.user_id ? 'Compte relié' : 'Sans compte'}</span>
-                    <button className="iconbtn" disabled={!isAdmin && m.role !== 'member'} title={!isAdmin && m.role !== 'member' ? 'Réservé aux administrateurs' : 'Modifier'} onClick={() => setEdit(m)} aria-label={`Modifier ${m.name}`}><Icon name="edit" size={16} /></button>
+                    <button className="iconbtn" disabled={!isAdmin && (m.role !== 'member' || m.treasurer)} title={!isAdmin && (m.role !== 'member' || m.treasurer) ? 'Réservé aux administrateurs' : 'Modifier'} onClick={() => setEdit(m)} aria-label={`Modifier ${m.name}`}><Icon name="edit" size={16} /></button>
                   </div>
                 );
               })}
@@ -222,12 +225,14 @@ function EditMember({ m, members, isAdmin, isMe, onClose, done }: { m: Member; m
   const [name, setName] = useState(m.name);
   const [role, setRole] = useState<Role>(m.role);
   const [active, setActive] = useState(m.active);
+  const [treasurer, setTreasurer] = useState(!!m.treasurer);
+  const hasBar = !!useBar().data;
   const [run, busy] = useAction();
   const confirm = useConfirm();
   const last = isLastAdmin(members, m);
   const save = async () => {
     if (role === 'admin' && m.role !== 'admin' && !await confirm(makeAdmin(m.name))) return;
-    const ok = await run(async () => { await api.update('club_members', m.id, { name: name.trim(), active, ...(isAdmin ? { role } : {}) }); await done(); }, 'Enregistré.');
+    const ok = await run(async () => { await api.update('club_members', m.id, { name: name.trim(), active, ...(isAdmin ? { role } : {}), ...(isAdmin && hasBar ? { treasurer } : {}) }); await done(); }, 'Enregistré.');
     if (ok) onClose();
   };
   return (
@@ -238,6 +243,7 @@ function EditMember({ m, members, isAdmin, isMe, onClose, done }: { m: Member; m
         {isAdmin && role !== 'member' && !m.user_id && <NoAccount name={m.name} />}
         {isMe && role !== m.role && !last && <p className="muted">Attention : tu changes ton propre rôle.</p>}
         {last && role !== 'admin' && <p className="muted">Le club doit garder au moins un administrateur : nommes-en un autre d'abord.</p>}
+        {isAdmin && hasBar && <Switch label="Trésorerie de la buvette" hint="Valide les paiements et voit toutes les ardoises" checked={treasurer} onChange={setTreasurer} />}
         <Switch label="Adhérent actif" hint="Un ancien adhérent garde ses résultats et les outils, mais n'entre plus dans l'espace du club" checked={active} onChange={setActive} />
         {isAdmin && m.user_id && <div><button type="button" className="btn sm" disabled={busy} onClick={async () => {
           if (await confirm({ title: 'Détacher le compte ?', text: 'Son compte repassera à valider : la personne n\'ouvrira plus Le Club, le Range Editor ni le Trainer avant une nouvelle validation. Ses ranges sont conservées.', ok: 'Détacher', danger: true })) {

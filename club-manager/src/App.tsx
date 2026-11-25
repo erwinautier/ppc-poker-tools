@@ -1,5 +1,9 @@
 import { useEffect } from 'react';
 import { ClubProvider, api, demo, isDemo, useClub } from './lib/club';
+import { BarProvider, useBar } from './lib/barContext';
+import { BarReminder } from './components/BarReminder';
+import { BarPage } from './pages/Bar';
+import { BarCounter } from './pages/BarCounter';
 import type { DemoRole } from './lib/demoApi';
 import { useRoute } from './lib/router';
 import { Icon, Loading, UiProvider, useConfirm, type IconName } from './components/ui';
@@ -21,7 +25,9 @@ export default function App() {
   return (
     <UiProvider>
       <ClubProvider>
-        <Shell />
+        <BarProvider>
+          <Shell />
+        </BarProvider>
       </ClubProvider>
     </UiProvider>
   );
@@ -37,6 +43,7 @@ function Shell() {
   if (!club.ready) return <Loading />;
   if (!club.installed) return <NotInstalledPage />;
   if (a === 't' && b && c === 'horloge') return <ClockScreen key={b} id={b} />;
+  if (club.kiosk || (a === 'buvette' && b === 'comptoir' && club.me)) return <div className="counterpage">{isDemo && <DemoBar />}<BarCounter /></div>;
 
   return (
     <>
@@ -44,6 +51,7 @@ function Shell() {
       {isDemo && <DemoBar />}
       <TopBar section={a} />
       <main className="main">{club.recovering ? <NewPassword /> : page()}</main>
+      <BarReminder />
     </>
   );
 
@@ -57,6 +65,7 @@ function Shell() {
       case 'c': return c === 'modifier' ? staffOnly(<ChampionshipEdit key={b} id={b} />) : <ChampionshipPage key={b} id={b} tab={c} />;
       case 'structures': return b ? staffOnly(<StructureEdit key={b} id={b === 'nouveau' ? undefined : b} />) : staffOnly(<Structures />);
       case 'adherents': return staffOnly(<Members />);
+      case 'buvette': return <BarPage tab={b} />;
       case 'j': return <PlayerPage key={b} id={b} />;
       case 'compte': return <Account />;
       default: return <Home />;
@@ -73,17 +82,22 @@ function Forbidden() {
   );
 }
 
-const Badge = ({ n = 0 }: { n?: number }) => n > 0 ? <span className="badge"><span aria-hidden="true">{n}</span><span className="sr-only">, {n > 1 ? `${n} comptes` : '1 compte'} à valider</span></span> : null;
+const Badge = ({ n = 0, what = '' }: { n?: number; what?: string }) => n > 0 ? <span className="badge"><span aria-hidden="true">{n}</span><span className="sr-only">, {n} {what}{n > 1 ? 's' : ''} à valider</span></span> : null;
 
 function TopBar({ section }: { section: string }) {
   const { isStaff, me, user, pending } = useClub();
-  const items: { href: string; label: string; short?: string; icon: IconName; on: boolean; count?: number }[] = [
+  const { data: d } = useBar();
+  const showBar = !!d && !!me;
+  const barCount = d?.validate ? d.team?.pending.length ?? 0 : 0;
+  const items: { href: string; label: string; short?: string; icon: IconName; on: boolean; count?: number; what?: string; desktop?: boolean }[] = [
     { href: '#/', label: 'Accueil', icon: 'home', on: section === '' },
     { href: '#/tournois', label: 'Tournois', icon: 'calendar', on: section === 'tournois' || section === 't' },
     { href: '#/championnats', label: 'Championnats', short: 'Classement', icon: 'trophy', on: section === 'championnats' || section === 'c' },
+    ...(showBar ? [{ href: '#/buvette', label: 'Buvette', icon: 'cup' as const, on: section === 'buvette', count: barCount, what: 'paiement' }] : []),
     ...(isStaff ? [
-      { href: '#/structures', label: 'Structures', short: 'Blindes', icon: 'layers' as const, on: section === 'structures' },
-      { href: '#/adherents', label: 'Adhérents', icon: 'users' as const, on: section === 'adherents', count: pending },
+      // Sept entrées ne tiennent pas sur un téléphone : les structures passent par la page Tournois.
+      { href: '#/structures', label: 'Structures', short: 'Blindes', icon: 'layers' as const, on: section === 'structures', desktop: showBar },
+      { href: '#/adherents', label: 'Adhérents', icon: 'users' as const, on: section === 'adherents', count: pending, what: 'compte' },
     ] : []),
     { href: '#/compte', label: me ? me.name.split(' ')[0] : user ? 'Mon compte' : 'Connexion', short: user ? 'Compte' : 'Connexion', icon: 'user', on: section === 'compte' },
   ];
@@ -97,12 +111,12 @@ function TopBar({ section }: { section: string }) {
           </a>
           <span className="spacer" />
           <nav className="nav" aria-label="Navigation principale">
-            {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={17} />{i.label}<Badge n={i.count} /></a>)}
+            {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={17} />{i.label}<Badge n={i.count} what={i.what} /></a>)}
           </nav>
         </div>
       </header>
       <nav className="bottomnav" aria-label="Navigation principale">
-        {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={21} />{i.short ?? i.label}<Badge n={i.count} /></a>)}
+        {items.filter(i => !i.desktop).map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={21} />{i.short ?? i.label}<Badge n={i.count} what={i.what} /></a>)}
       </nav>
     </>
   );
@@ -119,8 +133,10 @@ function DemoBar() {
           <select className="demorole" value={demo!.role()} onChange={e => { demo!.setRole(e.target.value as DemoRole); void refresh(); }}>
             <option value="admin">administrateur</option>
             <option value="director">gestionnaire</option>
+            <option value="treasurer">trésorerie</option>
             <option value="member">adhérent</option>
             <option value="pending">nouveau compte</option>
+            <option value="kiosk">tablette du comptoir</option>
             <option value="anon">visiteur</option>
           </select>
         </label>

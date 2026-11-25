@@ -1,3 +1,4 @@
+import { useBar } from '../lib/barContext';
 import { entriesOf, listChampionships, listTournaments, useClub, useLoad } from '../lib/club';
 import { useRoute } from '../lib/router';
 import { Empty, Icon, State } from '../components/ui';
@@ -5,6 +6,7 @@ import { TournamentRow } from '../components/cards';
 
 export function Tournaments() {
   const { isStaff, me, user } = useClub();
+  const { data: hasBar } = useBar();
   const past = useRoute().parts[1] === 'passes';
   const q = useLoad(async () => {
     const [tournaments, championships] = await Promise.all([listTournaments(), listChampionships()]);
@@ -18,6 +20,7 @@ export function Tournaments() {
     <>
       <div className="pagehead">
         <div><h1>Tournois</h1></div>
+        {isStaff && hasBar && <a className="btn onlyphone" href="#/structures"><Icon name="layers" />Structures</a>}
         {isStaff && <a className="btn primary" href="#/tournois/nouveau"><Icon name="plus" />Nouveau tournoi</a>}
       </div>
       <div className="tabs">

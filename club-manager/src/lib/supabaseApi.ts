@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { MissingRpc, NotInstalled, keyOf, type Api, type AuthUser, type Query, type TableName } from './api';
+import { DbError, MissingRpc, NotInstalled, keyOf, type Api, type AuthUser, type Query, type TableName } from './api';
 
 // Même projet et même session que le Range Editor et le Trainer.
 const SUPABASE_URL = 'https://kbkxzvsgusakjgmnbbmx.supabase.co';
@@ -16,8 +16,8 @@ export function createSupabaseApi(): Api {
   function check(error: { code?: string; message: string } | null) {
     if (!error) return;
     if (error.code === 'PGRST205' || error.code === '42P01') throw new NotInstalled(error.message);
-    if (error.code === 'PGRST202' || error.code === '42883') throw new MissingRpc(error.message);
-    throw new Error(error.message);
+    if (error.code === 'PGRST202' || error.code === '42883') throw new MissingRpc(error.message, error.code);
+    throw new DbError(error.message, error.code);
   }
   const asUser = (u: { id: string; email?: string } | null | undefined): AuthUser | null =>
     u ? { id: u.id, email: u.email ?? '' } : null;
@@ -49,6 +49,15 @@ export function createSupabaseApi(): Api {
       })
       // Après une coupure, on ne sait pas ce qui a changé : on recharge.
       .subscribe(s => { if (s === 'SUBSCRIBED') watchers.forEach(w => w(null)); });
+  }
+
+  const barWatchers = new Set<() => void>();
+  let barChannel: ReturnType<typeof sb.channel> | null = null;
+  function listenBar() {
+    if (barChannel) return;
+    barChannel = sb.channel('club-buvette')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'club_bar_settings' }, () => barWatchers.forEach(w => w()))
+      .subscribe(s => { if (s === 'SUBSCRIBED') barWatchers.forEach(w => w()); });
   }
 
   return {
@@ -126,6 +135,11 @@ export function createSupabaseApi(): Api {
       watchers.add(cb);
       listen();
       return () => { watchers.delete(cb); };
+    },
+    watchBar(cb) {
+      barWatchers.add(cb);
+      listenBar();
+      return () => { barWatchers.delete(cb); };
     },
   };
 }

@@ -1,5 +1,7 @@
 /** Club fictif du mode démo. Tous les noms sont inventés. */
 import { generateLevels, PRESETS, DEFAULT_CHIPS } from './structure';
+import { DEFAULT_BAR } from './bar';
+import type { BarDb } from './demoBar';
 import { DEFAULT_SCORING, withSettings, type Account, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from './types';
 
 export interface DemoDb {
@@ -12,6 +14,7 @@ export interface DemoDb {
   club_payments: Payment[];
   club_knockouts: Knockout[];
   refused: string[];
+  bar: BarDb;
   accounts: Pick<Account, 'user_id' | 'username' | 'email' | 'confirmed' | 'created_at'>[];
   seq: number;
 }
@@ -36,7 +39,7 @@ function shuffled<T>(a: T[], r: () => number): T[] {
   return b;
 }
 
-export const DEMO_USERS = { admin: 'demo-user-0', director: 'demo-user-1', member: 'demo-user-3', pending: 'demo-user-91' };
+export const DEMO_USERS = { admin: 'demo-user-0', director: 'demo-user-1', treasurer: 'demo-user-2', member: 'demo-user-3', pending: 'demo-user-91' };
 
 export function seedDemo(now: number): DemoDb {
   const r = rng(22);
@@ -49,7 +52,7 @@ export function seedDemo(now: number): DemoDb {
 
   const members: Member[] = NAMES.map((name, i) => ({
     id: `demo-m-${i}`, user_id: i === 0 ? DEMO_USERS.admin : i === 3 ? DEMO_USERS.member : i < 12 ? `demo-user-${i}` : null,
-    name, role: i === 0 ? 'admin' : i === 1 ? 'director' : 'member', active: true, created_at: iso(now - 200 * DAY),
+    name, role: i === 0 ? 'admin' : i === 1 ? 'director' : 'member', active: true, created_at: iso(now - 200 * DAY), treasurer: i === 2,
   }));
 
   const structures: Structure[] = PRESETS.map(p => ({
@@ -152,6 +155,7 @@ export function seedDemo(now: number): DemoDb {
     club_payments: payments,
     club_knockouts: knockouts,
     refused: ['demo-user-94'],
+    bar: seedBar(members, now),
     accounts: [
       ...members.filter(m => m.user_id).map((m, i) => ({ user_id: m.user_id!, username: m.name.split(' ')[0], email: `adherent${i + 1}@exemple.test`, confirmed: true, created_at: iso(now - (180 - i) * DAY) })),
       { user_id: 'demo-user-90', username: 'Ewen', email: 'ewen@exemple.test', confirmed: true, created_at: iso(now - DAY) },
@@ -162,4 +166,44 @@ export function seedDemo(now: number): DemoDb {
     ],
     seq,
   };
+}
+
+/** Une ardoise fictive : six soirées, quelques paiements, un rappel à découvrir. */
+function seedBar(members: Member[], now: number): BarDb {
+  const r = rng(7);
+  const DAY = 86_400_000, MIN = 60_000;
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const items = ([['Café', '☕', 50], ['Thé', '🫖', 50], ['Eau', '💧', 50], ['Soda', '🥤', 150], ['Bière', '🍺', 200], ['Chips', '🥔', 100], ['Croque', '🥪', 250]] as const)
+    .map(([name, emoji, price], i) => ({ id: `demo-bar-${i + 1}`, name, emoji, price, active: true, sort: i + 1 }));
+  const db: BarDb = { items, lines: [], payments: [], reminders: [], settings: { ...DEFAULT_BAR }, kiosks: [{ id: 'demo-kiosk', name: 'Tablette du bar', created_at: iso(now - 40 * DAY), used_at: iso(now - 3 * DAY) }] };
+  let n = 0;
+  const evening = (days: number) => { const d = new Date(now - days * DAY); d.setHours(20, 30, 0, 0); return d.getTime(); };
+  const take = (m: Member, at: number) => {
+    const item = items[Math.floor(r() * items.length)];
+    db.lines.push({ id: `demo-line-${++n}`, member_id: m.id, item_id: item.id, label: item.name, price: item.price, guest: r() < 0.08, ...(r() < 0.5 ? { by_member: m.id, by_kiosk: null } : { by_member: null, by_kiosk: 'demo-kiosk' }), created_at: iso(at), cancelled_at: null });
+  };
+  for (const days of [45, 38, 31, 17, 10, 3]) {
+    for (const m of members.slice(0, 16)) {
+      if (r() < 0.45) continue;
+      const count = 1 + Math.floor(r() * 3);
+      for (let i = 0; i < count; i++) take(m, evening(days) + Math.floor(r() * 150) * MIN);
+    }
+  }
+  // La reprise du tableau papier, pour trois personnes.
+  for (const [i, amount] of [[4, 850], [7, 1400], [9, 600]]) {
+    db.lines.push({ id: `demo-line-${++n}`, member_id: members[i].id, item_id: null, label: 'Reprise du tableau papier', price: amount, guest: false, by_member: members[2].id, by_kiosk: null, created_at: iso(evening(60)), cancelled_at: null });
+  }
+  const owed = (m: Member) => db.lines.filter(l => l.member_id === m.id).reduce((x, l) => x + l.price, 0);
+  const pay = (m: Member, amount: number, status: 'validated' | 'pending', days: number) => db.payments.push({
+    id: `demo-pay-${++n}`, member_id: m.id, amount, method: r() < 0.6 ? 'cash' : 'transfer', status, declared_by: m.id,
+    decided_by: status === 'validated' ? members[2].id : null, created_at: iso(evening(days)), decided_at: status === 'validated' ? iso(evening(days)) : null,
+  });
+  for (const i of [0, 1, 5, 6, 10, 12]) if (owed(members[i]) > 0) pay(members[i], owed(members[i]), 'validated', 2);
+  for (const i of [2, 8]) pay(members[i], Math.max(100, Math.floor(owed(members[i]) / 200) * 100), 'validated', 12);
+  for (const i of [11, 13]) if (owed(members[i]) > 0) pay(members[i], owed(members[i]), 'pending', 1);
+  // Nolwenn (le rôle « adhérent » de la démo) a une ardoise et un rappel à lire.
+  const me = members[3];
+  for (let i = 0; i < 5; i++) take(me, evening(33) + i * 20 * MIN);
+  db.reminders.push({ id: 'demo-reminder', member_id: me.id, amount: owed(me), by_member: members[1].id, created_at: iso(now - 2 * 3_600_000), seen_at: null });
+  return db;
 }

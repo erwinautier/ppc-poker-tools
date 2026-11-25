@@ -10,6 +10,8 @@ export interface Member {
   role: Role;
   active: boolean;
   created_at: string;
+  /** Trésorerie de la buvette : valide les paiements. Absent avant le script 003. */
+  treasurer?: boolean;
 }
 
 export interface JoinRequest {

@@ -36,6 +36,20 @@ Dans l'éditeur SQL, exécute ensuite `supabase/002_club_accounts.sql` (une fois
 Le script se termine par un bilan : `outils_proteges` doit valoir 2. Sans lui, la suite
 marche comme avant. Si tu relances un jour `001_club.sql`, relance-le juste après.
 
+## 2 ter. Ouvrir la buvette
+
+Dans l'éditeur SQL, exécute `supabase/003_club_bar.sql` (une fois). L'onglet **Buvette**
+apparaît alors pour les adhérents. Ensuite, dans l'application :
+
+1. **Buvette > Tarifs et réglages** : saisis les produits et les prix, et la façon de payer.
+2. **Adhérents** : confie la trésorerie à quelqu'un (un administrateur seulement).
+3. **Buvette > Suivi > Reprise ou correction** : reporte les soldes du tableau papier.
+4. **Buvette > Tarifs et réglages > Tablettes du comptoir** : crée un accès, scanne le QR
+   code avec la tablette. Le lien n'est montré qu'une fois ; on peut le retirer.
+
+Sans ce script, l'application marche comme avant. Si tu relances `001_club.sql`, relance
+ensuite `002_club_accounts.sql` puis `003_club_bar.sql`.
+
 ## 3. Autoriser le lien « mot de passe oublié »
 
 Dans **Authentication > URL Configuration > Redirect URLs**, ajoute l'adresse
@@ -64,6 +78,10 @@ si elle en a déjà une. Un administrateur peut lui donner un rôle au même mom
 Ces droits sont appliqués par la base elle-même (RLS), pas seulement par l'écran. Les
 adresses des adhérents ne sont montrées qu'aux administrateurs ; celles des comptes à
 valider, à toute l'équipe.
+
+La **trésorerie** de la buvette est un droit à part, confié par un administrateur : elle
+valide les paiements et voit toutes les ardoises. Les gestionnaires voient et relancent ;
+personne ne valide son propre paiement. Une fiche qui a une ardoise ne se supprime pas.
 
 Détacher un compte ou supprimer sa fiche le remet « à valider ». Un ancien adhérent, lui,
 garde les outils mais n'entre plus dans l'espace du club.

@@ -26,6 +26,7 @@ const PATHS = {
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14',
   check: 'M4 12l6 6L20 6',
   close: 'M6 6l12 12M18 6L6 18',
+  cup: 'M5 9h11v6a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.500a2.500 2.500 0 0 1 0 5H16M8 3v3M12 3v3',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l4 2',
   share: 'M12 15V3M8 7l4-4 4 4M5 12v9h14v-9',
   up: 'M12 19V5M6 11l6-6 6 6',
@@ -255,7 +256,7 @@ export function Qr({ text, size = 160 }: { text: string; size?: number }) {
     return { path: p, n: count };
   }, [text]);
   return (
-    <svg className="qr" width={size} height={size} viewBox={`-2 -2 ${n + 4} ${n + 4}`} shapeRendering="crispEdges" role="img" aria-label="QR code du tournoi">
+    <svg className="qr" width={size} height={size} viewBox={`-2 -2 ${n + 4} ${n + 4}`} shapeRendering="crispEdges" role="img" aria-label="QR code">
       <rect x="-2" y="-2" width={n + 4} height={n + 4} fill="#FFF2DC" />
       <path d={path} fill="#26082D" />
     </svg>

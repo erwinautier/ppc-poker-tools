@@ -1,3 +1,5 @@
+import { useBar } from '../lib/barContext';
+import { isLate, money } from '../lib/bar';
 import { entriesOf, knockoutsOf, listChampionships, listTournaments, useClub, useLoad } from '../lib/club';
 import { standings } from '../lib/scoring';
 import * as f from '../lib/format';
@@ -6,6 +8,8 @@ import { LiveTicket, TournamentRow } from '../components/cards';
 
 export function Home() {
   const { me, user, account, pending, request, isStaff } = useClub();
+  const { data: tab } = useBar();
+  const toCheck = tab?.validate ? tab.team?.pending.length ?? 0 : 0;
   const q = useLoad(async () => {
     const [tournaments, championships] = await Promise.all([listTournaments(), listChampionships()]);
     const active = championships.filter(c => c.status === 'active').slice(0, 2);
@@ -37,6 +41,18 @@ export function Home() {
             : request ? 'Ton compte attend la validation du club, qui a bien reçu ton nom.'
             : 'Ton compte attend la validation du club. Indique ton nom pour qu\'on te reconnaisse.'}</span>
           {!request && account !== 'ok' && account !== 'refused' && <a className="btn primary" href="#/compte">Indiquer mon nom</a>}
+        </div>
+      )}
+      {tab && isLate(tab.slate, tab.settings, Date.now()) && (
+        <div className="card warn row between">
+          <span>Ton ardoise à la buvette : <b>{money(tab.slate.open)}</b>.</span>
+          <a className="btn" href="#/buvette">Voir mon ardoise</a>
+        </div>
+      )}
+      {toCheck > 0 && (
+        <div className="card note row between">
+          <span>{toCheck > 1 ? `${toCheck} paiements de la buvette attendent` : 'Un paiement de la buvette attend'} ta validation.</span>
+          <a className="btn" href="#/buvette/suivi">{toCheck > 1 ? 'Voir les paiements' : 'Voir le paiement'}</a>
         </div>
       )}
       {pending > 0 && (
