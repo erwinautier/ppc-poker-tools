@@ -83,6 +83,18 @@
       "autoPort": true
     },
     {
+      "name": "club-manager",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "club-manager",
+        "run",
+        "dev"
+      ],
+      "port": 5179,
+      "autoPort": true
+    },
+    {
       "name": "suite-dist",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
