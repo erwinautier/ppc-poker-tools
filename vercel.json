@@ -6,8 +6,6 @@
     { "source": "/editor/((?!assets/).*)", "destination": "/editor/index.html" },
     { "source": "/trainer",  "destination": "/trainer/index.html" },
     { "source": "/trainer/((?!assets/).*)", "destination": "/trainer/index.html" },
-    { "source": "/postflop",  "destination": "/postflop/index.html" },
-    { "source": "/postflop/((?!assets/).*)", "destination": "/postflop/index.html" },
     { "source": "/equity",  "destination": "/equity/index.html" },
     { "source": "/equity/((?!assets/).*)", "destination": "/equity/index.html" },
     { "source": "/tournoi",  "destination": "/tournoi/index.html" },
