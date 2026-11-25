@@ -96,6 +96,23 @@ export function importREStateFromJSON(file: File): Promise<REState> {
   });
 }
 
+/**
+ * The collections to choose from, followed by « Sans collection » for the ranges
+ * that belong to none, as in the Range Editor's sidebar.
+ */
+export function collectionGroups(state: REState): RECollection[] {
+  const filed = new Set(state.collections.flatMap(c => c.rangeIds));
+  const loose = state.ranges.filter(r => !filed.has(r.id));
+  if (state.collections.length === 0 || loose.length === 0) return state.collections;
+  return [...state.collections, {
+    id: 'sans-collection',
+    title: 'Sans collection',
+    description: '',
+    rangeIds: loose.map(r => r.id),
+    createdAt: 0,
+  }];
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /** Total assigned frequency for a hand (sum of all color frequencies, capped at 100). */

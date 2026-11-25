@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   loadREState, importREStateFromJSON,
-  handInRange, handColors, scenarioDescription,
+  collectionGroups, handInRange, handColors, scenarioDescription,
   type REState, type RERange,
 } from '../engine/rangeEditorBridge';
 import {
@@ -416,7 +416,7 @@ function SelectStep({
 
         <div className="space-y-2">
           {viewMode === 'col' && state.collections.length > 0
-            ? state.collections.map(col => {
+            ? collectionGroups(state).map(col => {
                 const colRanges = col.rangeIds.map(id => byId[id]).filter(r => r && visibleIds.has(r.id));
                 if (colRanges.length === 0) return null;
                 const allSel = colRanges.every(r => selected.has(r.id));
