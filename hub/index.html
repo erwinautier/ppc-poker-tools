@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#26082D" />
+  <meta name="theme-color" content="#0B2238" />
   <title>PPC Poker Tools</title>
-  <link rel="icon" type="image/png" href="logo-ppc.png" />
-  <link rel="apple-touch-icon" href="logo-ppc.png" />
+  <link rel="icon" type="image/png" href="logo-ppc-nuit.png" />
+  <link rel="apple-touch-icon" href="logo-ppc-nuit.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -14,18 +14,21 @@
        « ../ » marche en ligne (/shared/, copié par build.mjs) comme depuis le dépôt (hub/../shared/). -->
   <link rel="stylesheet" href="../shared/ppc-da.css" />
   <script>
-    /* DA affichée, posée en clair sur <html> avant l'affichage : ?da=… dans l'adresse,
-       sinon le choix mémorisé, sinon la DA par défaut de ppc-da.css (la feuille est déjà chargée ici). */
+    /* DA affichée, posée en clair sur <html> avant l'affichage (mêmes règles que ppc-da.js) :
+       ?da=… dans l'adresse, sinon le choix mémorisé d'un administrateur, sinon la DA par
+       défaut de ppc-da.css (la feuille est déjà chargée ici). */
     (function () {
-      var r = document.documentElement, d = null;
+      var r = document.documentElement, d = null, admin = false;
       try {
+        var s = localStorage, id = s.getItem('ppc-da-admin'), session = s.getItem('ppc-auth');
+        admin = !!id && !!session && session.indexOf(id) >= 0;
         d = new URLSearchParams(location.search).get('da');
-        if (d === 'vice' || d === 'nuit') localStorage.setItem('ppc-da', d);
-        d = localStorage.getItem('ppc-da');
+        if (d !== 'vice' && d !== 'nuit') d = admin ? s.getItem('ppc-da') : null;
       } catch (e) {}
+      if (admin) r.setAttribute('data-da-admin', '');
       if (d !== 'vice' && d !== 'nuit') {
         r.removeAttribute('data-da');
-        d = getComputedStyle(r).getPropertyValue('--ppc-da').trim() || 'vice';
+        d = getComputedStyle(r).getPropertyValue('--ppc-da').trim() || 'nuit';
       }
       r.setAttribute('data-da', d);
     })();
@@ -54,8 +57,9 @@
       padding: 40px 16px 32px;
     }
 
-    /* Choix de la DA */
-    .da-switch {
+    /* Choix de la DA : réservé aux administrateurs du club (data-da-admin, voir ppc-da.js) */
+    .da-switch { display: none; }
+    :root[data-da-admin] .da-switch {
       position: absolute;
       top: calc(var(--stripe-h) + 12px);
       right: 16px;
@@ -298,7 +302,7 @@
     :root[data-da="nuit"] .app-cta { border-top-color: color-mix(in srgb, var(--ppc-or) 25%, var(--border)); }
 
     @media (max-width: 640px) {
-      .da-switch { position: static; margin: 0 auto 26px; }
+      :root[data-da-admin] .da-switch { position: static; margin: 0 auto 26px; }
     }
     @media (max-width: 480px) {
       .title { font-size: 1.7rem; }
@@ -315,8 +319,8 @@
 
     <div class="da-switch" role="group" aria-label="Direction artistique">
       <span class="da-switch-label" aria-hidden="true">DA</span>
-      <button type="button" data-da-choice="vice"><i aria-hidden="true"></i>Vice City</button>
       <button type="button" data-da-choice="nuit"><i aria-hidden="true"></i>Bleu nuit &amp; or</button>
+      <button type="button" data-da-choice="vice"><i aria-hidden="true"></i>Vice City</button>
     </div>
 
     <div class="header">
@@ -446,7 +450,8 @@
   <div class="ppc-stripe" aria-hidden="true"></div>
 
   <script type="module">
-    // Sélecteur de DA : la bascule, l'icône d'onglet et la couleur de barre viennent du module commun.
+    // Sélecteur de DA (administrateurs) : la bascule, l'icône d'onglet et la couleur de barre
+    // viennent du module commun.
     import { getDA, setDA, subscribeDA } from '../shared/ppc-da.js';
     const buttons = document.querySelectorAll('[data-da-choice]');
     const sync = () => buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.daChoice === getDA())));

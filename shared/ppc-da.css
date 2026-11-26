@@ -2,18 +2,22 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *  PPC · Directions artistiques (DA) de la suite Poker Tools
  *
- *  Deux DA cohabitent ; on passe de l'une à l'autre sans recharger la page
- *  (pastille dans l'en-tête de chaque app, sélecteur sur l'accueil, ou ?da=…
- *  dans l'adresse). Le choix est mémorisé par le navigateur : voir ppc-da.js.
+ *  Deux DA cohabitent. Les ADMINISTRATEURS du club passent de l'une à l'autre
+ *  sans recharger (pastille dans l'en-tête de chaque app, sélecteur sur
+ *  l'accueil) et leur choix est mémorisé ; tous les autres voient la DA par
+ *  défaut. ?da=… dans l'adresse montre une DA sur la page ouverte, pour un
+ *  aperçu. Voir ppc-da.js.
  *
+ *    « nuit »  Bleu nuit & or — bleu nuit, ivoire, or doux, bleu acier ;
+ *              Montserrat partout, titres en capitales grasses. DA du club.
  *    « vice »  Vice City — prune, ivoire, or, corail, turquoise ;
  *              Bungee (titres) + Montserrat (texte). DA historique.
- *    « nuit »  Bleu nuit & or — bleu nuit, ivoire, or doux, bleu acier ;
- *              Montserrat partout, titres en capitales grasses.
  *
- *  DA PAR DÉFAUT (visiteur qui n'a rien choisi) : celle dont le bloc commence
- *  par « :root, ». Pour changer de DA par défaut, déplacer « :root, » vers
- *  l'autre bloc : c'est tout (ppc-da.js lit --ppc-da pour savoir laquelle).
+ *  DA PAR DÉFAUT (tout le monde, sauf un administrateur qui a choisi l'autre) :
+ *  celle dont le bloc commence par « :root, ». Pour en changer, déplacer
+ *  « :root, » vers l'autre bloc, puis mettre la même DA en tête de DA_LIST
+ *  (ppc-da.js) et en secours dans le script d'en-tête de hub/index.html : ces
+ *  deux-là ne servent que tant que cette feuille n'est pas chargée.
  *
  *  Règle : tout ce qui change d'une DA à l'autre est une variable définie dans
  *  les blocs ci-dessous. Les apps n'utilisent que ces variables, jamais de
@@ -33,8 +37,8 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-/* ── DA « Vice City » ─────────────────────────────── DA par défaut ─────── */
-:root, :root[data-da="vice"] {
+/* ── DA « Vice City » ───────────────────────────────── DA historique ───── */
+:root[data-da="vice"] {
   --ppc-da: vice;
 
   --ppc-prune:     #26082D;
@@ -82,8 +86,8 @@
   --da-next: linear-gradient(135deg, #0B2238 0 50%, #C9A85B 50% 100%);
 }
 
-/* ── DA « Bleu nuit & or » ──────────── dossier « nouvelle direction artistique » ── */
-:root[data-da="nuit"] {
+/* ── DA « Bleu nuit & or » ─────────────── DA par défaut (nouvelle DA du club) ── */
+:root, :root[data-da="nuit"] {
   --ppc-da: nuit;
 
   --ppc-prune:     #0B2238;   /* Bleu nuit  — élégance, profondeur */
@@ -168,8 +172,10 @@
   background: var(--stripe);
 }
 
-/* Pastille de bascule de DA (en-tête des apps) : montre les couleurs de l'autre DA */
+/* Pastille de bascule de DA (en-tête des apps) : montre les couleurs de l'autre DA.
+   Cachée sauf pour un administrateur (ppc-da.js pose alors data-da-admin sur <html>). */
 .ppc-da-switch {
+  display: none;
   flex: none;
   width: 28px;
   height: 28px;
@@ -181,6 +187,7 @@
   cursor: pointer;
   transition: transform .15s, border-color .15s;
 }
+:root[data-da-admin] .ppc-da-switch { display: inline-block; }
 .ppc-da-switch:hover { border-color: var(--accent); transform: rotate(-25deg) scale(1.08); }
 .ppc-da-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
