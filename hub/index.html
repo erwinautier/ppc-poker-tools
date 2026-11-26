@@ -325,7 +325,10 @@
 
     <div class="header">
       <img src="logo-ppc.png" alt="Penthièvre Poker Club" class="logo only-vice" loading="lazy" />
-      <img src="logo-ppc-nuit-embleme.png" alt="Penthièvre Poker Club" class="logo-embleme only-nuit" loading="lazy" />
+      <picture>
+        <source srcset="logo-ppc-nuit-embleme.png" media="(prefers-reduced-motion: reduce)" />
+        <img src="logo-ppc-nuit-embleme.webp" alt="Penthièvre Poker Club" class="logo-embleme only-nuit" width="464" height="440" loading="lazy" />
+      </picture>
       <div>
         <p class="club">Penthièvre Poker Club</p>
         <h1 class="title">Poker Tools</h1>
