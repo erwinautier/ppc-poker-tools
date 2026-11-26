@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA, toggleDA } from '../../shared/ppc-da.js';
 import './App.css';
 import ReTrainerPage from './pages/ReTrainerPage';
 import StatsPage     from './pages/StatsPage';
@@ -44,6 +45,7 @@ function SyncBadge({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }
 // ── Inner App ─────────────────────────────────────────────────────────────────
 
 function AppInner() {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   const { username, signOut } = useAuthContext();
   const { state: authState } = useAuth();
   const userId = authState.status === 'authenticated' ? authState.user.id : null;
@@ -72,21 +74,23 @@ function AppInner() {
         height: 'var(--header-h)',
         background: 'var(--surface)',
         borderBottom: '1px solid var(--border)',
-        boxShadow: 'inset 0 3px 0 var(--ppc-corail)',
+        boxShadow: 'inset 0 3px 0 var(--signature)',
         display: 'flex', alignItems: 'center',
         padding: '0 16px', gap: 12,
         position: 'sticky', top: 0, zIndex: 100, flexShrink: 0,
       }}>
         <a href="/" title="Accueil" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit', flex: 1 }}>
-          <img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          <img src={`${import.meta.env.BASE_URL}${logoFile(da)}`} alt="PPC" style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
           <div>
-            <div style={{ fontFamily: 'var(--font-title)', fontSize: '1.05rem', fontWeight: 400, color: 'var(--ppc-ivoire)', lineHeight: 1.1 }}>Poker Trainer</div>
+            <div className="ppc-title" style={{ fontSize: '1.05rem', color: 'var(--ppc-ivoire)', lineHeight: 1.1 }}>Poker Trainer</div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>NLHE · Pré-flop</div>
           </div>
         </a>
 
         {/* Sync badge */}
         <SyncBadge status={syncStatus} />
+
+        <button type="button" className="ppc-da-switch" onClick={toggleDA} title="Changer de direction artistique" aria-label="Changer de direction artistique" />
 
         {/* Font size toggle */}
         <button

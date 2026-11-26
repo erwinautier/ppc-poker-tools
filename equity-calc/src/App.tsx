@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA, toggleDA } from '../../shared/ppc-da.js';
 import { CardSlot } from './components/CardSlot';
 import { CardPicker } from './components/CardPicker';
 import { RangePanel } from './components/RangePanel';
@@ -31,6 +32,7 @@ function potOdds(eq: number): string {
 }
 
 export default function App() {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   const [players, setPlayers] = useState<Player[]>(() => [
     { id: 1, name: 'Hero',      active: true, hole: [null, null], range: parseRange(DEFAULT_RANGES[0]).range },
     { id: 2, name: 'Villain 1', active: true, hole: [null, null], range: parseRange(DEFAULT_RANGES[1]).range },
@@ -155,11 +157,12 @@ export default function App() {
   return (
     <div className="page">
       <div className="header">
-        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" /></a>
+        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}${logoFile(da)}`} alt="PPC" /></a>
         <div>
           <h1>Calculateur d'équité</h1>
           <div className="sub">Range vs range · Monte Carlo · NLHE</div>
         </div>
+        <button type="button" className="ppc-da-switch" onClick={toggleDA} title="Changer de direction artistique" aria-label="Changer de direction artistique" />
       </div>
 
       <div className="card">

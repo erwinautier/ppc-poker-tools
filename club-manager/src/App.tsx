@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA, toggleDA } from '../../shared/ppc-da.js';
 import { ClubProvider, api, demo, isDemo, useClub } from './lib/club';
 import { BarProvider, useBar } from './lib/barContext';
 import { BarReminder } from './components/BarReminder';
@@ -85,6 +86,7 @@ function Forbidden() {
 const Badge = ({ n = 0, what = '' }: { n?: number; what?: string }) => n > 0 ? <span className="badge"><span aria-hidden="true">{n}</span><span className="sr-only">, {n} {what}{n > 1 ? 's' : ''} à valider</span></span> : null;
 
 function TopBar({ section }: { section: string }) {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   const { isStaff, me, user, pending } = useClub();
   const { data: d } = useBar();
   const showBar = !!d && !!me;
@@ -106,13 +108,14 @@ function TopBar({ section }: { section: string }) {
       <header className="topbar">
         <div className="topbar-in">
           <a className="brand" href="/" title="Retour à PPC Poker Tools">
-            <img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="" />
+            <img src={`${import.meta.env.BASE_URL}${logoFile(da)}`} alt="" />
             <div><span>Penthièvre Poker Club</span><b>Le Club</b></div>
           </a>
           <span className="spacer" />
           <nav className="nav" aria-label="Navigation principale">
             {items.map(i => <a key={i.href} href={i.href} className={i.on ? 'on' : ''} aria-current={i.on ? 'page' : undefined}><Icon name={i.icon} size={17} />{i.label}<Badge n={i.count} what={i.what} /></a>)}
           </nav>
+          <button type="button" className="ppc-da-switch" onClick={toggleDA} title="Changer de direction artistique" aria-label="Changer de direction artistique" />
         </div>
       </header>
       <nav className="bottomnav" aria-label="Navigation principale">

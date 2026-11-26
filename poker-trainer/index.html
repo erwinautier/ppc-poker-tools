@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <meta name="theme-color" content="#26082D" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- DA choisie (voir shared/ppc-da.js), posée avant l affichage pour éviter un flash -->
+    <script>try{var q=new URLSearchParams(location.search).get("da");if(q)localStorage.setItem("ppc-da",q);q=localStorage.getItem("ppc-da");if(q)document.documentElement.setAttribute("data-da",q)}catch(e){}</script>
     <title>Poker Trainer · PPC</title>
   </head>
   <body>

@@ -257,8 +257,8 @@ export function Qr({ text, size = 160 }: { text: string; size?: number }) {
   }, [text]);
   return (
     <svg className="qr" width={size} height={size} viewBox={`-2 -2 ${n + 4} ${n + 4}`} shapeRendering="crispEdges" role="img" aria-label="QR code">
-      <rect x="-2" y="-2" width={n + 4} height={n + 4} fill="#FFF2DC" />
-      <path d={path} fill="#26082D" />
+      <rect x="-2" y="-2" width={n + 4} height={n + 4} style={{ fill: 'var(--ppc-ivoire)' }} />
+      <path d={path} style={{ fill: 'var(--ppc-prune)' }} />
     </svg>
   );
 }

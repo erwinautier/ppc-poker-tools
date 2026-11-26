@@ -1,5 +1,6 @@
 /** Le tableau papier, en tactile : les noms à gauche, les consos et leurs prix en haut. */
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA } from '../../../shared/ppc-da.js';
 import { bar, isDemo, useClub, useLoad } from '../lib/club';
 import { useBarRefresh } from '../lib/barContext';
 import { key } from '../lib/accounts';
@@ -9,6 +10,7 @@ import { Empty, Icon, State, useConfirm } from '../components/ui';
 import { Queued, useTake } from './Bar';
 
 export function BarCounter() {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   const { kiosk, me } = useClub();
   const q = useLoad(() => bar.counter(), [kiosk, me?.id]);
   useBarRefresh(!!q.data, q.reload, kiosk ? 8_000 : 15_000);
@@ -38,7 +40,7 @@ export function BarCounter() {
   return (
     <div className="counter">
       <header className="counterhead">
-        <img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="" />
+        <img src={`${import.meta.env.BASE_URL}${logoFile(da)}`} alt="" />
         <h1>Buvette</h1>
         <Queued n={d.queued} />
         <input placeholder="Chercher un nom" aria-label="Chercher un nom" value={search} onChange={e => setSearch(e.target.value)} />

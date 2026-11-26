@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA } from '../../../shared/ppc-da.js';
 import { useClub, useNow, useTournament, useWakeLock, type TournamentBundle } from '../lib/club';
 import { chipCount, participants, payouts, replay } from '../lib/engine';
 import * as f from '../lib/format';
@@ -30,6 +31,7 @@ function useIdle(ms: number): boolean {
 }
 
 function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: () => Promise<void>; isStaff: boolean; offline: string | null }) {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   const { t, entries, knockouts } = b;
   const now = useNow(200);
   const v = viewOf(t, now);
@@ -89,7 +91,7 @@ function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: 
     <div className={`tv ${isBreak ? 'break' : ''} ${lastMinute ? 'last' : ''} ${idle ? 'idle' : ''}`}>
       <div className="ppc-stripe" aria-hidden="true" />
       <header className="tv-head">
-        <img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="Penthièvre Poker Club" />
+        <img src={`${import.meta.env.BASE_URL}${logoFile(da)}`} alt="Penthièvre Poker Club" />
         <div style={{ minWidth: 0 }}>
           <h1>{t.name}</h1>
           <p>{[b.championship?.name, t.venue].filter(Boolean).join(' · ') || 'Penthièvre Poker Club'}</p>
