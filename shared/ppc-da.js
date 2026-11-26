@@ -13,9 +13,12 @@
  *   - ?da=nuit ou ?da=vice dans l'adresse montre cette DA sur la page ouverte,
  *     pour tout le monde (aperçu) ; pour un administrateur, le choix est mémorisé.
  *
- * Qui est administrateur ? Seul Le Club connaît les rôles : il appelle
- * setDAAdmin(id du compte) ou setDAAdmin(null). Les autres apps le croient tant
- * que la session de connexion commune (« ppc-auth ») est celle de ce compte.
+ * Qui est administrateur ? Le rôle « admin » d'une fiche du Club. Chaque page le
+ * demande au serveur à l'ouverture (checkDAAdmin, avec la session de connexion
+ * commune « ppc-auth ») ; les apps où l'on se connecte (Club, Range Editor,
+ * Trainer) le redisent dès qu'un compte se connecte ou se déconnecte
+ * (setDAAdmin). La réponse est retenue pour ce compte tant que sa session reste
+ * ouverte : une page ouverte avec une session expirée la réutilise.
  * C'est un réglage d'affichage, pas une protection : il ne donne accès à rien.
  *
  * Fichier en JavaScript pour que l'accueil (page HTML sans build) l'utilise
@@ -50,11 +53,39 @@ export function isDAAdmin() {
   return !!id && !!session && session.includes(id);
 }
 
-/** Appelé par Le Club, seul à connaître les rôles : id du compte s'il est administrateur, sinon null. */
+/** Réponse connue : id du compte connecté s'il est administrateur du club, sinon null. */
 export function setDAAdmin(userId) {
   if (read(ADMIN_KEY) !== (userId || null)) write(ADMIN_KEY, userId);
   // Même sans changement : la session vient peut-être de s'ouvrir dans cet onglet.
   apply(wanted());
+}
+
+// Projet Supabase de la suite : mêmes valeurs que les clients des apps (la clé « anon » est publique).
+const SUPABASE_URL = 'https://kbkxzvsgusakjgmnbbmx.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtia3h6dnNndXNha2pnbW5iYm14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzI2ODgsImV4cCI6MjA5Njc0ODY4OH0.Wwp7pgRNQVi1bQ94Fogk_GwYbfNratRpus4pUjzkzAo';
+
+/**
+ * Demande au serveur si le compte connecté est administrateur du club (fonction
+ * club_is_admin du Club). Sans session : plus d'administrateur. Session expirée,
+ * hors ligne, réponse inattendue : on garde ce que l'on savait.
+ */
+export async function checkDAAdmin() {
+  let session = null;
+  try { session = JSON.parse(read(AUTH_KEY) || 'null'); } catch { /* session illisible */ }
+  const id = session?.user?.id, token = session?.access_token;
+  if (!id || !token) { if (read(ADMIN_KEY)) setDAAdmin(null); return; }
+  if (session.expires_at && session.expires_at * 1000 < Date.now() + 10_000) return;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/club_is_admin`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!r.ok) return;
+    const admin = await r.json();
+    if (typeof admin === 'boolean') setDAAdmin(admin ? id : null);
+  } catch { /* hors ligne */ }
 }
 
 // ?da=… : vaut pour la page ouverte, quel que soit le visiteur.
@@ -123,6 +154,7 @@ function apply(id) {
 // Démarrage. Un administrateur qui ouvre un lien ?da=… garde ce choix.
 if (pageChoice && isDAAdmin()) write(KEY, pageChoice);
 apply(wanted());
+void checkDAAdmin();
 
 // Les autres onglets ouverts suivent : choix de DA, administrateur, connexion ou déconnexion.
 window.addEventListener('storage', e => {

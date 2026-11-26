@@ -22,7 +22,9 @@ export function subscribeDA(fn: () => void): () => void;
 export function setDA(id: DA): void;
 /** Bascule vers l'autre DA (sans effet si le visiteur n'est pas administrateur). */
 export function toggleDA(): void;
-/** Un administrateur du club est connecté sur cet appareil (d'après Le Club). */
+/** Un administrateur du club est connecté sur cet appareil (rôle « admin » d'une fiche du Club). */
 export function isDAAdmin(): boolean;
-/** Réservé au Club : id du compte connecté s'il est administrateur, sinon null. */
+/** Réponse connue : id du compte connecté s'il est administrateur du club, sinon null. */
 export function setDAAdmin(userId: string | null): void;
+/** Demande au serveur si le compte connecté est administrateur ; sans réponse sûre, ne change rien. */
+export function checkDAAdmin(): Promise<void>;
