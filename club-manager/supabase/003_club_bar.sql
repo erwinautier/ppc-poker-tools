@@ -199,7 +199,7 @@ create trigger club_members_treasurer before insert or update or delete on publi
 create or replace function public.club_bar_touch() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  update public.club_bar_settings set rev = rev + 1;
+  update public.club_bar_settings set rev = rev + 1 where id;
   return null;
 end $$;
 
@@ -513,7 +513,7 @@ language plpgsql security definer set search_path = '' as $$
 begin
   perform public.club_bar_need_manager();
   if p_alert is null or p_alert not between 0 and 100000 or p_days is null or p_days not between 1 and 365 then raise exception 'Réglage invalide.'; end if;
-  update public.club_bar_settings set alert = p_alert, days = p_days, pay_info = left(btrim(coalesce(p_pay_info, '')), 200), rev = rev + 1;
+  update public.club_bar_settings set alert = p_alert, days = p_days, pay_info = left(btrim(coalesce(p_pay_info, '')), 200), rev = rev + 1 where id;
 end $$;
 
 -- ── Tablettes du comptoir ───────────────────────────────────────────────────
