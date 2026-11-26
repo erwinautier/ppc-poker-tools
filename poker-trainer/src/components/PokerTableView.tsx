@@ -152,12 +152,12 @@ export default function PokerTableView({ range }: Props) {
   return (
     <svg viewBox="0 0 520 400" style={{ width: '100%', maxWidth: 460, display: 'block', margin: '0 auto' }} role="img">
       <title>Table de poker</title>
-      <ellipse cx={260} cy={190} rx={210} ry={130} fill="var(--surface2)" stroke="var(--ppc-corail)" strokeWidth={5} />
+      <ellipse cx={260} cy={190} rx={210} ry={130} fill="var(--surface2)" stroke="var(--signature)" strokeWidth={5} />
       {/* Au centre : le pot (blindes + mises) */}
       <text x={260} y={148} textAnchor="middle" fill="var(--text-muted)" fontSize={13} fontWeight={700} fontFamily="Montserrat, system-ui, sans-serif" letterSpacing="0.1em">
         POT
       </text>
-      <text x={260} y={186} textAnchor="middle" fill="var(--ppc-ivoire)" fontSize={36} fontFamily="Bungee, Montserrat, system-ui, sans-serif">
+      <text x={260} y={186} textAnchor="middle" fill="var(--ppc-ivoire)" fontSize={36} className="ppc-title">
         {fmtBB(potInfo.pot)} BB
       </text>
 

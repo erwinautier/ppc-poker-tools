@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { Range, PaletteColor } from './types';
 import { cellToHand, combosCount } from './hands';
+import { logoFile } from '../../shared/ppc-da.js';
 
 function hexToRgb(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -9,10 +10,10 @@ function hexToRgb(hex: string): [number, number, number] {
   return [r, g, b];
 }
 
-// Charge le logo en base64 depuis le dossier public
+// Charge le logo de la DA affichée (jeton PNG détouré) en base64, depuis le dossier public
 async function loadLogoBase64(): Promise<string | null> {
   try {
-    const response = await fetch('/logo-ppc.jpg');
+    const response = await fetch(`${import.meta.env.BASE_URL}${logoFile()}`);
     const blob = await response.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -44,7 +45,7 @@ export async function exportRangeToPDF(range: Range, fontSizeClass: 'sm' | 'md' 
   const headerY = 12;
 
   if (logoBase64) {
-    doc.addImage(logoBase64, 'JPEG', margin, headerY - 9, logoSize, logoSize);
+    doc.addImage(logoBase64, 'PNG', margin, headerY - 9, logoSize, logoSize);
   }
 
   const textX = logoBase64 ? margin + logoSize + 5 : margin;

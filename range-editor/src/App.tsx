@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA, toggleDA } from '../../shared/ppc-da.js';
 import type { AppState, Range } from './types';
 import { loadState, saveState, exportStateJSON, importAndMergeStateJSON, newRange } from './store';
 import { exportRangeToPDF } from './pdfExport';
@@ -35,6 +36,7 @@ function SyncBadge({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }
 
 // ── Inner app (requires auth context) ────────────────────────────────────────
 function AppInner() {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   const { username, signOut } = useAuthContext();
   const { state: authState } = useAuth();
   const userId = authState.status === 'authenticated' ? authState.user.id : null;
@@ -136,7 +138,7 @@ function AppInner() {
         </button>
         <div className="app-logo">
           <a href="/" title="Accueil" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
-            <img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" className="header-logo" />
+            <img src={`${import.meta.env.BASE_URL}${logoFile(da)}`} alt="PPC" className="header-logo" />
             <span className="header-title">Range Editor</span>
           </a>
         </div>
@@ -156,6 +158,8 @@ function AppInner() {
 
         {/* Sync badge */}
         <SyncBadge status={syncStatus} />
+
+        <button type="button" className="ppc-da-switch" onClick={toggleDA} title="Changer de direction artistique" aria-label="Changer de direction artistique" />
 
         <div className="header-actions">
           {/* Desktop : boutons visibles */}

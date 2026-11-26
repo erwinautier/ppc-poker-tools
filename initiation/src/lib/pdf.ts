@@ -6,20 +6,39 @@ import { jsPDF } from 'jspdf';
 import type { Fiche, FicheBlock, Lesson } from '../content/types';
 import type { Term } from '../content/lexique';
 import { cards as parseCards, rankLabel } from './cards';
+import { type DA, getDA, logoFile } from '../../../shared/ppc-da.js';
 
-// Couleurs de la DA du club (palette A « Vice City »), adaptées à l'impression sur blanc.
+// Couleurs de la DA du club, adaptées à l'impression sur blanc : celles de la DA
+// affichée au moment de l'export (voir shared/ppc-da.css).
 type RGB = [number, number, number];
-const PRUNE: RGB = [38, 8, 45];
-const IVOIRE: RGB = [255, 242, 220];
-const OR: RGB = [242, 184, 26];
-const CORAIL: RGB = [255, 77, 112];
-const TURQUOISE: RGB = [15, 198, 204];
-const INK: RGB = PRUNE;
-const MUTED: RGB = [125, 90, 116];
-const ACCENT: RGB = [216, 40, 82];      // corail assombri : lisible en petit texte
-const GOLD: RGB = [196, 140, 0];
-const LINE: RGB = [236, 220, 196];
-const SOFT: RGB = [255, 249, 238];
+interface PrintPalette {
+  ink: RGB; muted: RGB; gold: RGB; line: RGB; soft: RGB;
+  accent: RGB;     // accent assombri : lisible en petit texte
+  or: RGB;         // liserés (encadrés, attestation)
+  ivoire: RGB;     // fond des encadrés et en-têtes de tableau
+  mark: RGB;       // repère devant les intertitres
+  frise: RGB[];    // bandeau de pied de page
+}
+const PRINT: Record<DA, PrintPalette> = {
+  vice: {
+    ink: [38, 8, 45], muted: [125, 90, 116], gold: [196, 140, 0], line: [236, 220, 196], soft: [255, 249, 238],
+    accent: [216, 40, 82], or: [242, 184, 26], ivoire: [255, 242, 220], mark: [255, 77, 112],
+    frise: [[38, 8, 45], [255, 242, 220], [242, 184, 26], [255, 77, 112], [15, 198, 204]],
+  },
+  nuit: {
+    ink: [11, 34, 56], muted: [86, 104, 124], gold: [161, 128, 56], line: [228, 220, 205], soft: [251, 247, 240],
+    accent: [146, 113, 44], or: [201, 168, 91], ivoire: [247, 236, 221], mark: [201, 168, 91],
+    frise: [[201, 168, 91]],
+  },
+};
+let PRUNE: RGB, INK: RGB, MUTED: RGB, ACCENT: RGB, GOLD: RGB, LINE: RGB, SOFT: RGB, OR: RGB, IVOIRE: RGB, MARK: RGB, FRISE: RGB[];
+/** Prend les couleurs de la DA affichée ; à appeler au début de chaque export. */
+function choosePalette() {
+  const p = PRINT[getDA()];
+  PRUNE = INK = p.ink; MUTED = p.muted; ACCENT = p.accent; GOLD = p.gold;
+  LINE = p.line; SOFT = p.soft; OR = p.or; IVOIRE = p.ivoire; MARK = p.mark; FRISE = p.frise;
+}
+choosePalette();
 const SUIT_RGB: Record<string, [number, number, number]> = { s: [26, 31, 46], h: [220, 38, 38], d: [37, 99, 235], c: [21, 128, 61] };
 
 const W = 210, H = 297, M = 16, CW = W - 2 * M;
@@ -34,15 +53,19 @@ export function latin(s: string): string {
     .replace(/[^\u0000-ÿ]/g, '');
 }
 
-let logoCache: string | null | undefined;
+const logoCache = new Map<string, string | null>();
+/** Jeton du club dans la DA affichée, en data URL. */
 async function logo(): Promise<string | null> {
-  if (logoCache !== undefined) return logoCache;
+  const file = logoFile();
+  if (logoCache.has(file)) return logoCache.get(file)!;
+  let data: string | null = null;
   try {
-    const r = await fetch(`${import.meta.env.BASE_URL}logo-ppc.png`);
+    const r = await fetch(`${import.meta.env.BASE_URL}${file}`);
     const b = await r.blob();
-    logoCache = await new Promise<string>(res => { const fr = new FileReader(); fr.onloadend = () => res(fr.result as string); fr.readAsDataURL(b); });
-  } catch { logoCache = null; }
-  return logoCache;
+    data = await new Promise<string>(res => { const fr = new FileReader(); fr.onloadend = () => res(fr.result as string); fr.readAsDataURL(b); });
+  } catch { data = null; }
+  logoCache.set(file, data);
+  return data;
 }
 
 class Writer {
@@ -65,7 +88,7 @@ class Writer {
   section(title: string) {
     this.ensure(14);
     this.y += 4;
-    this.doc.setFillColor(...CORAIL); this.doc.rect(M, this.y - 3.4, 1.4, 4.4, 'F');
+    this.doc.setFillColor(...MARK); this.doc.rect(M, this.y - 3.4, 1.4, 4.4, 'F');
     this.text(title.toUpperCase(), M + 3.5, 9.5, 'bold', PRUNE);
     this.y += 6;
   }
@@ -197,9 +220,9 @@ async function header(wr: Writer, kicker: string, title: string, subtitle: strin
   wr.y += 5;
 }
 
-/** La frise des cinq couleurs du club. */
+/** La frise du club : les cinq couleurs (Vice City) ou un filet d'or (Bleu nuit & or). */
 function stripe(doc: jsPDF, x: number, y: number, w: number, h: number) {
-  [PRUNE, IVOIRE, OR, CORAIL, TURQUOISE].forEach((c, i) => { doc.setFillColor(...c); doc.rect(x + (i * w) / 5, y, w / 5, h, 'F'); });
+  FRISE.forEach((c, i) => { doc.setFillColor(...c); doc.rect(x + (i * w) / FRISE.length, y, w / FRISE.length, h, 'F'); });
 }
 
 function footers(doc: jsPDF) {
@@ -244,6 +267,7 @@ function slug(s: string) {
 }
 
 export async function downloadFiche(lesson: Lesson, moduleTitle: string, terms: Term[]) {
+  choosePalette();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const wr = new Writer(doc);
   await writeFiche(wr, lesson, moduleTitle, terms);
@@ -252,6 +276,7 @@ export async function downloadFiche(lesson: Lesson, moduleTitle: string, terms: 
 }
 
 export async function downloadAllFiches(items: { lesson: Lesson; moduleTitle: string; terms: Term[] }[]) {
+  choosePalette();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const wr = new Writer(doc);
   for (let i = 0; i < items.length; i++) {
@@ -265,6 +290,7 @@ export async function downloadAllFiches(items: { lesson: Lesson; moduleTitle: st
 // ── Attestation ────────────────────────────────────────────────────────────
 
 export async function downloadAttestation(name: string, avg: number) {
+  choosePalette();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   const w = 297, h = 210;
   doc.setFillColor(...SOFT); doc.rect(0, 0, w, h, 'F');

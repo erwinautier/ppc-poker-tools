@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA, toggleDA } from '../../../shared/ppc-da.js';
 import { CORE_LESSONS, LESSONS, MODULES, lessonById } from '../content';
 import { TERMS, termsOfLesson } from '../content/lexique';
 import { PHASE_LABEL, getStore, isValidated, lessonProgress, resetAll, setName, useStore } from '../lib/progress';
@@ -8,13 +9,15 @@ const pdf = () => import('../lib/pdf');
 const BASE = import.meta.env.BASE_URL;
 
 export function Header({ title, sub }: { title: string; sub: string }) {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   return (
     <div className="header">
-      <a href="/" title="Toutes les applications du club"><img src={`${BASE}logo-ppc.png`} alt="PPC" /></a>
+      <a href="/" title="Toutes les applications du club"><img src={`${BASE}${logoFile(da)}`} alt="PPC" /></a>
       <div className="grow">
         <h1>{title}</h1>
         <div className="sub">{sub}</div>
       </div>
+      <button type="button" className="ppc-da-switch" onClick={toggleDA} title="Changer de direction artistique" aria-label="Changer de direction artistique" />
     </div>
   );
 }

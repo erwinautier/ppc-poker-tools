@@ -8,8 +8,7 @@
 :root {
   --font: var(--font-text);
 
-  --felt:       #0d6d6f;   /* tapis : turquoise profond */
-  --felt-edge:  #3d1546;
+  /* Tapis (--felt, --felt-edge) et paires de la grille (--grid-pair) : dans shared/ppc-da.css, propres à chaque DA */
   --card-face:  #fffaf0;
   --card-edge:  #e3d2bb;
   --card-back:  var(--ppc-corail);
@@ -19,7 +18,6 @@
   --suit-d:     #2563eb;
   --suit-c:     #15803d;
 
-  --grid-pair:  #44204c;   /* grille 13×13 : paires */
   --raise-bg:   var(--gold-bg);
   --raise-fg:   var(--ppc-or);
   --call-bg:    var(--accent-bg);

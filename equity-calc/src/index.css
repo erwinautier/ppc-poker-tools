@@ -19,8 +19,9 @@ button { font-family: inherit; }
 
 .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
 .header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
-.header h1 { font-family: var(--font-title); font-size: 1.2rem; font-weight: 400; line-height: 1.1; color: var(--ppc-ivoire); }
+.header h1 { font-family: var(--font-title); font-size: 1.2rem; font-weight: var(--title-weight); text-transform: var(--title-case); line-height: 1.1; color: var(--ppc-ivoire); }
 .header .sub { font-size: 0.72rem; color: var(--text-muted); }
+.header .ppc-da-switch { margin-left: auto; }
 
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
 
@@ -90,7 +91,7 @@ button { font-family: inherit; }
   font-size: clamp(0.5rem, 1.3vw, 0.7rem); font-weight: 700; cursor: pointer; border: 1px solid transparent;
   background: var(--surface2); color: var(--text-muted);
 }
-.cell.pair { background: #44204c; }
+.cell.pair { background: var(--grid-pair); }
 .cell.on   { background: var(--gold); color: var(--on-primary); }
 .cell.dead { opacity: .35; }
 .panel-foot { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }

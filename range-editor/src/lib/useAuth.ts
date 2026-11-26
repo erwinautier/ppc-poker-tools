@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Session, User, AuthError } from '@supabase/supabase-js';
 import { supabase, type Profile } from './supabase';
+import { setDAAdmin } from '../../../shared/ppc-da.js';
 
 export type AuthState =
   | { status: 'loading' }
@@ -14,11 +15,14 @@ export function useAuth() {
   const [state, setState] = useState<AuthState>({ status: 'loading' });
 
   const loadProfile = useCallback(async (user: User, session: Session) => {
-    const [{ data }, { data: club }] = await Promise.all([
+    const [{ data }, { data: club }, admin] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       // Fonction absente ou injoignable : on laisse entrer, la base refuse elle-même d'enregistrer.
       supabase.rpc('club_account_status'),
+      // Administrateur du club : lui seul peut changer de DA (shared/ppc-da.js).
+      supabase.rpc('club_is_admin'),
     ]);
+    if (!admin.error && typeof admin.data === 'boolean') setDAAdmin(admin.data ? user.id : null);
     if (data && (club === 'pending' || club === 'refused')) {
       setState({ status: club });
     } else if (data) {
@@ -29,14 +33,19 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
+    const signedOut = () => {
+      setDAAdmin(null);
+      setState({ status: 'unauthenticated' });
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) loadProfile(session.user, session);
-      else setState({ status: 'unauthenticated' });
+      else signedOut();
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) loadProfile(session.user, session);
-      else setState({ status: 'unauthenticated' });
+      else signedOut();
     });
 
     return () => subscription.unsubscribe();

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { getDA, logoFile, subscribeDA, toggleDA } from '../../shared/ppc-da.js';
 import { NewTournament } from './components/NewTournament';
 import { TournamentView } from './components/TournamentView';
 import { type Tournament, createTournament, loadTournaments, saveTournaments, champion, finished, FORMAT_LABEL } from './lib/tournament';
@@ -6,6 +7,7 @@ import { type Tournament, createTournament, loadTournaments, saveTournaments, ch
 type View = { kind: 'list' } | { kind: 'new' } | { kind: 'show'; id: string };
 
 export default function App() {
+  const da = useSyncExternalStore(subscribeDA, getDA);
   const [list, setList] = useState<Tournament[]>(loadTournaments);
   const [view, setView] = useState<View>(() => (loadTournaments().length ? { kind: 'list' } : { kind: 'new' }));
 
@@ -20,11 +22,12 @@ export default function App() {
   return (
     <div className="page">
       <div className="header">
-        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}logo-ppc.png`} alt="PPC" /></a>
+        <a href="/" title="Accueil"><img src={`${import.meta.env.BASE_URL}${logoFile(da)}`} alt="PPC" /></a>
         <div>
           <h1>{current ? current.name : 'Tournoi HU'}</h1>
           <div className="sub">{current ? FORMAT_LABEL[current.format] : 'Organisation de tournois heads-up'}</div>
         </div>
+        <button type="button" className="ppc-da-switch" onClick={toggleDA} title="Changer de direction artistique" aria-label="Changer de direction artistique" />
       </div>
 
       {view.kind === 'new' && (

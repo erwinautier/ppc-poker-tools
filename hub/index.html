@@ -3,32 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#26082D" />
+  <meta name="theme-color" content="#0B2238" />
   <title>PPC Poker Tools</title>
-  <link rel="icon" type="image/png" href="logo-ppc.png" />
-  <link rel="apple-touch-icon" href="logo-ppc.png" />
+  <link rel="icon" type="image/png" href="logo-ppc-nuit.png" />
+  <link rel="apple-touch-icon" href="logo-ppc-nuit.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Couleurs et polices des deux DA : la feuille commune à toute la suite.
+       « ../ » marche en ligne (/shared/, copié par build.mjs) comme depuis le dépôt (hub/../shared/). -->
+  <link rel="stylesheet" href="../shared/ppc-da.css" />
+  <script>
+    /* DA affichée, posée en clair sur <html> avant l'affichage (mêmes règles que ppc-da.js) :
+       ?da=… dans l'adresse, sinon le choix mémorisé d'un administrateur, sinon la DA par
+       défaut de ppc-da.css (la feuille est déjà chargée ici). */
+    (function () {
+      var r = document.documentElement, d = null, admin = false;
+      try {
+        var s = localStorage, id = s.getItem('ppc-da-admin'), session = s.getItem('ppc-auth');
+        admin = !!id && !!session && session.indexOf(id) >= 0;
+        d = new URLSearchParams(location.search).get('da');
+        if (d !== 'vice' && d !== 'nuit') d = admin ? s.getItem('ppc-da') : null;
+      } catch (e) {}
+      if (admin) r.setAttribute('data-da-admin', '');
+      if (d !== 'vice' && d !== 'nuit') {
+        r.removeAttribute('data-da');
+        d = getComputedStyle(r).getPropertyValue('--ppc-da').trim() || 'nuit';
+      }
+      r.setAttribute('data-da', d);
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* Copie de shared/ppc-da.css (le hub est une page autonome) : garder les deux en phase. */
-    :root {
-      --ppc-prune:     #26082D;
-      --ppc-ivoire:    #FFF2DC;
-      --ppc-or:        #F2B81A;
-      --ppc-corail:    #FF4D70;
-      --ppc-turquoise: #0FC6CC;
-      --font-title: 'Bungee', 'Montserrat', system-ui, sans-serif;
-      --font-text:  'Montserrat', system-ui, -apple-system, sans-serif;
-      --bg:       #1c0521;
-      --surface:  #2a0a31;
-      --surface2: #38123f;
-      --border:   #512a5a;
-      --text:     var(--ppc-ivoire);
-      --muted:    #c4a8b9;
-    }
 
     html, body {
       min-height: 100dvh;
@@ -38,21 +44,66 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    .stripe {
-      height: 6px;
-      background: linear-gradient(90deg,
-        var(--ppc-prune) 0 20%, var(--ppc-ivoire) 20% 40%, var(--ppc-or) 40% 60%,
-        var(--ppc-corail) 60% 80%, var(--ppc-turquoise) 80% 100%);
-    }
+    /* Ce qui n'existe que dans une DA (le hub, page autonome, est le seul à utiliser [data-da]) */
+    :root[data-da="vice"] .only-nuit,
+    :root[data-da="nuit"] .only-vice { display: none !important; }
 
     .page {
-      min-height: calc(100dvh - 12px);
+      min-height: calc(100dvh - 2 * var(--stripe-h));
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 40px 16px 32px;
     }
+
+    /* Choix de la DA : réservé aux administrateurs du club (data-da-admin, voir ppc-da.js) */
+    .da-switch { display: none; }
+    :root[data-da-admin] .da-switch {
+      position: absolute;
+      top: calc(var(--stripe-h) + 12px);
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .da-switch-label {
+      padding: 0 6px 0 9px;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+    .da-switch button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 0;
+      border-radius: 999px;
+      padding: 6px 11px 6px 7px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .da-switch button:hover { color: var(--text); }
+    .da-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .da-switch i {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3);
+    }
+    .da-switch [data-da-choice="vice"] i { background: linear-gradient(135deg, #26082D 0 34%, #FF4D70 34% 67%, #0FC6CC 67% 100%); }
+    .da-switch [data-da-choice="nuit"] i { background: linear-gradient(135deg, #0B2238 0 50%, #C9A85B 50% 100%); }
+    :root[data-da="vice"] [data-da-choice="vice"],
+    :root[data-da="nuit"] [data-da-choice="nuit"] { background: var(--accent); color: var(--on-accent); }
 
     /* En-tête */
     .header {
@@ -69,20 +120,27 @@
       display: block;
       filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
     }
+    .logo-embleme {
+      width: 232px;
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.5));
+    }
     .club {
       font-size: 0.78rem;
       font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--ppc-corail);
+      color: var(--signature);
     }
     .title {
       font-family: var(--font-title);
-      font-weight: 400;
+      font-weight: var(--title-weight);
+      text-transform: var(--title-case);
       font-size: 2.1rem;
       line-height: 1;
       color: var(--ppc-ivoire);
-      text-shadow: 3px 3px 0 var(--ppc-corail);
+      text-shadow: 3px 3px 0 var(--title-pop);
     }
     .motto {
       margin-top: 4px;
@@ -90,6 +148,26 @@
       font-weight: 600;
       color: var(--ppc-or);
     }
+
+    /* Séparateur aux quatre enseignes, comme sur le flyer */
+    .suits {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 440px;
+      margin: -14px 0 34px;
+      color: var(--ppc-or);
+      font-size: 1.05rem;
+      letter-spacing: 0.45em;
+    }
+    .suits::before, .suits::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--ppc-or));
+    }
+    .suits::after { transform: scaleX(-1); }
 
     /* Grille des applications */
     .grid {
@@ -176,31 +254,86 @@
     /* Pied de page */
     .footer {
       margin-top: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
       font-size: 0.74rem;
       color: var(--muted);
       text-align: center;
       line-height: 1.6;
     }
+    .signature { width: 96px; height: auto; display: block; opacity: 0.9; }
 
+    /* ── Retouches propres à la DA « Bleu nuit & or » ─────────────────────── */
+    :root[data-da="nuit"] body {
+      background: radial-gradient(120% 60% at 50% 0%, #12304D 0%, var(--bg) 70%) var(--bg);
+    }
+    :root[data-da="nuit"] .header { margin-bottom: 36px; }
+    :root[data-da="nuit"] .title { font-size: 2.3rem; letter-spacing: 0.02em; }
+    :root[data-da="nuit"] .motto {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 7px 30px;
+      background: linear-gradient(90deg, #A8873F, var(--ppc-or) 25% 75%, #A8873F);
+      color: var(--ppc-prune);
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%, 12px 50%);
+    }
+    :root[data-da="nuit"] .app-card {
+      --c: var(--ppc-or);
+      border: 1px solid color-mix(in srgb, var(--ppc-or) 30%, var(--border));
+      background: linear-gradient(180deg, var(--surface2), var(--surface));
+    }
+    :root[data-da="nuit"] .app-card:hover { border-color: var(--ppc-or); }
+    :root[data-da="nuit"] .app-icon {
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ppc-or);
+      border-radius: 50%;
+      font-size: 1.6rem;
+    }
+    :root[data-da="nuit"] .app-name { text-transform: uppercase; letter-spacing: 0.03em; }
+    :root[data-da="nuit"] .app-cta { border-top-color: color-mix(in srgb, var(--ppc-or) 25%, var(--border)); }
+
+    @media (max-width: 640px) {
+      :root[data-da-admin] .da-switch { position: static; margin: 0 auto 26px; }
+    }
     @media (max-width: 480px) {
       .title { font-size: 1.7rem; }
+      :root[data-da="nuit"] .title { font-size: 1.8rem; }
       .logo { width: 112px; height: 112px; }
+      .logo-embleme { width: 196px; }
       .grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <div class="stripe" aria-hidden="true"></div>
+  <div class="ppc-stripe" aria-hidden="true"></div>
   <div class="page">
 
+    <div class="da-switch" role="group" aria-label="Direction artistique">
+      <span class="da-switch-label" aria-hidden="true">DA</span>
+      <button type="button" data-da-choice="nuit"><i aria-hidden="true"></i>Bleu nuit &amp; or</button>
+      <button type="button" data-da-choice="vice"><i aria-hidden="true"></i>Vice City</button>
+    </div>
+
     <div class="header">
-      <img src="logo-ppc.png" alt="Penthièvre Poker Club" class="logo" />
+      <img src="logo-ppc.png" alt="Penthièvre Poker Club" class="logo only-vice" loading="lazy" />
+      <img src="logo-ppc-nuit-embleme.png" alt="Penthièvre Poker Club" class="logo-embleme only-nuit" loading="lazy" />
       <div>
         <p class="club">Penthièvre Poker Club</p>
         <h1 class="title">Poker Tools</h1>
         <p class="motto">Apprends. Progresse. Partage.</p>
       </div>
     </div>
+
+    <div class="suits only-nuit" aria-hidden="true">♣♦♥♠</div>
 
     <div class="grid">
 
@@ -308,11 +441,23 @@
 
     </div>
 
-    <p class="footer">
-      Les ranges créées dans l'éditeur sont disponibles directement dans le trainer et le calculateur.
-    </p>
+    <div class="footer">
+      <img src="logo-ppc-nuit-lunettes.png" alt="" class="signature only-nuit" loading="lazy" />
+      <p>Les ranges créées dans l'éditeur sont disponibles directement dans le trainer et le calculateur.</p>
+    </div>
 
   </div>
-  <div class="stripe" aria-hidden="true"></div>
+  <div class="ppc-stripe" aria-hidden="true"></div>
+
+  <script type="module">
+    // Sélecteur de DA (administrateurs) : la bascule, l'icône d'onglet et la couleur de barre
+    // viennent du module commun.
+    import { getDA, setDA, subscribeDA } from '../shared/ppc-da.js';
+    const buttons = document.querySelectorAll('[data-da-choice]');
+    const sync = () => buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.daChoice === getDA())));
+    buttons.forEach(b => b.addEventListener('click', () => setDA(b.dataset.daChoice)));
+    subscribeDA(sync);
+    sync();
+  </script>
 </body>
 </html>

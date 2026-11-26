@@ -19,9 +19,10 @@ strong { font-weight: 700; }
 .page { max-width: 720px; margin: 0 auto; padding: 14px 16px 96px; }
 .header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; }
-.header h1 { font-family: var(--font-title); font-size: 1.25rem; font-weight: 400; line-height: 1.1; letter-spacing: .01em; color: var(--ppc-ivoire); }
-.header h1.lesson-title { font-family: var(--font-text); font-size: 1.05rem; font-weight: 800; letter-spacing: 0; }
+.header h1 { font-family: var(--font-title); font-size: 1.25rem; font-weight: var(--title-weight); text-transform: var(--title-case); line-height: 1.1; letter-spacing: .01em; color: var(--ppc-ivoire); }
+.header h1.lesson-title { font-family: var(--font-text); font-size: 1.05rem; font-weight: 800; letter-spacing: 0; text-transform: none; }
 .header .sub { font-size: 0.75rem; color: var(--text-muted); }
+.header .ppc-da-switch { margin-left: auto; }
 .header .grow { flex: 1; min-width: 0; }
 .icon-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: var(--radius-sm); color: var(--text); font-size: 1.2rem; line-height: 1; }
 .icon-btn:hover { background: var(--surface2); }
@@ -77,10 +78,10 @@ h3 { font-size: 0.95rem; font-weight: 700; }
 .resume { display: block; width: 100%; text-align: left; background: var(--primary); color: var(--on-primary); border: none; border-radius: var(--radius); padding: 14px 16px; cursor: pointer; }
 .resume .k { font-size: 0.75rem; font-weight: 600; opacity: .85; }
 .resume .t { font-size: 1rem; font-weight: 800; }
-.resume { box-shadow: 0 3px 0 var(--ppc-corail); }
+.resume { box-shadow: 0 3px 0 var(--signature); }
 .module { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .module-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; background: none; border: none; width: 100%; text-align: left; }
-.module-head .n { font-size: 0.7rem; color: var(--ppc-corail); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.module-head .n { font-size: 0.7rem; color: var(--signature); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .module-head .t { font-weight: 700; }
 .lesson-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); cursor: pointer; background: none; border-left: none; border-right: none; border-bottom: none; width: 100%; text-align: left; }
 .lesson-row:hover { background: var(--surface2); }
@@ -108,7 +109,7 @@ h3 { font-size: 0.95rem; font-weight: 700; }
 .stepper button.on { background: var(--gold-bg); color: var(--ppc-or); outline: 1px solid var(--ppc-or); }
 .stepper button.done { background: var(--success-bg); color: var(--success); }
 .stepper button.locked { cursor: not-allowed; opacity: .55; }
-.lesson-kicker { font-size: 0.72rem; color: var(--ppc-corail); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.lesson-kicker { font-size: 0.72rem; color: var(--signature); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 
 /* ── Défi / entraînement ────────────────────────────────────────────────── */
 .runner-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -241,7 +242,7 @@ input[type=range] { width: 100%; accent-color: var(--primary); }
 .steps li { list-style: none; display: flex; gap: 10px; align-items: flex-start; }
 .steps li::before { counter-increment: s; content: counter(s); width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800; flex-shrink: 0; }
 .term-chip { display: inline-block; font-size: 0.78rem; padding: 3px 9px; border-radius: 12px; background: var(--surface2); margin: 2px 4px 2px 0; cursor: pointer; border: none; }
-.fiche-sheet { background: #fffdf8; color: var(--ppc-prune); border-radius: 6px; padding: 18px; font-size: 0.85rem; border-top: 6px solid var(--ppc-corail); }
+.fiche-sheet { background: #fffdf8; color: var(--ppc-prune); border-radius: 6px; padding: 18px; font-size: 0.85rem; border-top: 6px solid var(--signature); }
 .fiche-sheet h3 { color: var(--ppc-prune); font-size: 0.8rem; text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 6px; }
 .fiche-sheet ul { padding-left: 18px; }
 .fiche-sheet .tbl td, .fiche-sheet .tbl th { border-color: #ecdcc4; color: var(--ppc-prune); }

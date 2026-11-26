@@ -20,7 +20,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-text);
   height: var(--header-h);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  box-shadow: inset 0 3px 0 var(--ppc-corail);
+  box-shadow: inset 0 3px 0 var(--signature);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -62,7 +62,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-text);
 
 .header-title {
   font-family: var(--font-title);
-  font-weight: 400;
+  font-weight: var(--title-weight);
+  text-transform: var(--title-case);
   font-size: 17px;
   color: var(--ppc-ivoire);
   letter-spacing: 0.01em;

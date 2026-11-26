@@ -1,9 +1,17 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { getDA, logoFile, subscribeDA } from '../../../shared/ppc-da.js';
 import { useAuth } from './useAuth';
 
 type Mode = 'login' | 'signup' | 'reset';
 
+/** Jeton du club dans la DA affichée (suit la bascule de DA). */
+function useLogoSrc() {
+  const da = useSyncExternalStore(subscribeDA, getDA);
+  return `${import.meta.env.BASE_URL}${logoFile(da)}`;
+}
+
 function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
+  const logo = useLogoSrc();
   const { signIn, signUp, resetPassword } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -50,9 +58,9 @@ function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <img
-            src={`${import.meta.env.BASE_URL}logo-ppc.png`}
+            src={logo}
             alt="PPC"
-            style={{ height: 48, borderRadius: 8, marginBottom: '0.75rem' }}
+            style={{ display: 'block', height: 48, borderRadius: 8, margin: '0 auto 0.75rem' }}
           />
           <div style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1.1rem' }}>
             PPC Poker Tools
@@ -144,6 +152,7 @@ const linkStyle: React.CSSProperties = {
 };
 
 function WaitingScreen({ refused, signOut }: { refused: boolean; signOut: () => void }) {
+  const logo = useLogoSrc();
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -155,7 +164,7 @@ function WaitingScreen({ refused, signOut }: { refused: boolean; signOut: () => 
         borderRadius: 12, padding: '2rem',
       }}>
         <img
-          src={`${import.meta.env.BASE_URL}logo-ppc.png`}
+          src={logo}
           alt="PPC"
           style={{ display: 'block', height: 48, borderRadius: 8, margin: '0 auto 0.75rem' }}
         />

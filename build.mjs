@@ -52,4 +52,11 @@ cpSync(resolve(ROOT, 'initiation',      'dist'), resolve(ROOT, 'dist', 'initiati
 cpSync(resolve(ROOT, 'club-manager',    'dist'), resolve(ROOT, 'dist', 'club'),       { recursive: true });
 cpSync(resolve(ROOT, 'hub'), resolve(ROOT, 'dist'), { recursive: true });
 
+// 5. DA commune : l'accueil (page sans build) lit ces deux fichiers tels quels ;
+//    les apps, elles, les intègrent à leur propre build.
+mkdirSync(resolve(ROOT, 'dist', 'shared'), { recursive: true });
+for (const f of ['ppc-da.css', 'ppc-da.js']) {
+  cpSync(resolve(ROOT, 'shared', f), resolve(ROOT, 'dist', 'shared', f));
+}
+
 console.log('\n✅ Build complete → dist/');

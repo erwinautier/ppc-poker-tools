@@ -6,6 +6,7 @@ import { createCloudBar } from './cloudBar';
 import { adoptKioskLink, kioskKey, setKiosk } from './kiosk';
 import { createDemoApi, type DemoApi } from './demoApi';
 import { createSupabaseApi } from './supabaseApi';
+import { setDAAdmin } from '../../../shared/ppc-da.js';
 import { withScoring, withSettings, type Account, type AccountStatus, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Tournament } from './types';
 
 export const isDemo = new URLSearchParams(location.search).has('demo');
@@ -101,6 +102,14 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', back);
     return () => document.removeEventListener('visibilitychange', back);
   }, []);
+
+  // Bascule de DA réservée aux administrateurs : Le Club, seul à connaître les rôles, le dit aux
+  // autres apps. Compte sans fiche ou fiche illisible (hors ligne) : on ne change rien.
+  useEffect(() => {
+    if (demo || !state.ready) return;
+    if (!state.user) setDAAdmin(null);
+    else if (state.me) setDAAdmin(state.me.role === 'admin' ? state.user.id : null);
+  }, [state.ready, state.user, state.me]);
 
   const role = state.me?.role;
   const value = useMemo<Club>(() => ({
