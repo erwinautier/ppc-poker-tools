@@ -13,6 +13,8 @@
     { "source": "/initiation",  "destination": "/initiation/index.html" },
     { "source": "/initiation/((?!assets/).*)", "destination": "/initiation/index.html" },
     { "source": "/club",  "destination": "/club/index.html" },
-    { "source": "/club/((?!assets/).*)", "destination": "/club/index.html" }
+    { "source": "/club/((?!assets/).*)", "destination": "/club/index.html" },
+    { "source": "/carnet",  "destination": "/carnet/index.html" },
+    { "source": "/carnet/((?!assets/).*)", "destination": "/carnet/index.html" }
   ]
 }
