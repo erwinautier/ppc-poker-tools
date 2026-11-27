@@ -6,9 +6,9 @@ import { keyOf as pk, type Api, type AuthUser, type Query, type TableName } from
 import type { BarApi } from './bar';
 import { createDemoBar } from './demoBar';
 import { DEMO_USERS, seedDemo, type DemoDb } from './demoData';
-import { isLastAdmin, type Entry, type Knockout, type Member, type Tournament } from './types';
+import { isLastAdmin, type Entry, type HuMatch, type Knockout, type Member, type Tournament } from './types';
 
-const KEY = 'ppc-club-demo-v4';
+const KEY = 'ppc-club-demo-v5';
 const ROLE_KEY = 'ppc-club-demo-role';
 export type DemoRole = 'admin' | 'director' | 'treasurer' | 'member' | 'pending' | 'kiosk' | 'anon';
 
@@ -35,6 +35,7 @@ export function createDemoApi(): DemoApi {
       if (raw) memory = JSON.parse(raw) as DemoDb;
     } catch { /* stockage indisponible : démo en mémoire */ }
     memory ??= seedDemo(Date.now());
+    memory.club_hu_matches ??= [];
     save();
     return memory;
   }
@@ -74,6 +75,16 @@ export function createDemoApi(): DemoApi {
     }
   }
 
+  /** Mêmes règles que club_hu_matches_guard : le vainqueur seul, dans le dernier tour. */
+  function guardMatch(m: HuMatch, patch: object) {
+    if (Object.keys(patch).some(k => k !== 'winner')) throw new Error('Seul le vainqueur d\'un match se modifie.');
+    const w = (patch as { winner?: string | null }).winner ?? null;
+    if (w !== null && (m.b === null || (w !== m.a && w !== m.b))) throw new Error('Ce joueur ne joue pas ce match.');
+    const t = load().club_tournaments.find(x => x.id === m.tournament_id);
+    if (t && (t.status === 'finished' || t.status === 'cancelled')) throw new Error('Tournoi terminé : rouvre-le pour corriger un match.');
+    if (load().club_hu_matches.some(x => x.tournament_id === m.tournament_id && x.round > m.round)) throw new Error('Le tour suivant est déjà tiré : annule-le pour corriger ce match.');
+  }
+
   /** Mêmes règles de lecture que la base. */
   function visible(table: TableName, row: object): boolean {
     if (staff()) return true;
@@ -81,7 +92,7 @@ export function createDemoApi(): DemoApi {
     const seesT = (t?: Tournament) => !!t && t.status !== 'draft' && (t.visibility === 'public' || !!me());
     switch (table) {
       case 'club_tournaments': return seesT(row as Tournament);
-      case 'club_entries': case 'club_knockouts':
+      case 'club_entries': case 'club_knockouts': case 'club_hu_matches':
         return seesT(db.club_tournaments.find(t => t.id === (row as Entry).tournament_id));
       case 'club_championships': return (row as { visibility: string }).visibility === 'public' || !!me();
       case 'club_payments': return false;
@@ -165,6 +176,7 @@ export function createDemoApi(): DemoApi {
     },
     async insert<T>(table: TableName, input: object | object[]) {
       needStaff();
+      if (table === 'club_hu_matches') throw new Error('Les tours se tirent depuis l\'onglet Direct.');
       const db = load();
       const list = (Array.isArray(input) ? input : [input]).map(r => {
         const row: Record<string, unknown> = { ...DEFAULTS[table]?.(), created_at: new Date().toISOString(), ...r };
@@ -193,6 +205,7 @@ export function createDemoApi(): DemoApi {
       const row = rows(table).find(r => r[pk(table)] === id);
       if (!row) throw new Error('Introuvable.');
       if (table === 'club_members') guardMember(row as unknown as Member, { ...row, ...patch } as unknown as Member);
+      if (table === 'club_hu_matches') guardMatch(row as unknown as HuMatch, patch);
       Object.assign(row, clone(patch));
       if (table === 'club_members' && 'name' in patch) {
         for (const e of load().club_entries) if (e.member_id === id) e.name = String(row.name);
@@ -205,6 +218,7 @@ export function createDemoApi(): DemoApi {
       const row = rows(table).find(r => r[pk(table)] === id);
       if (!row) return;
       if (table !== 'club_join_requests') needStaff();
+      if (table === 'club_hu_matches') throw new Error('Annule le tour depuis l\'onglet Direct.');
       if (table === 'club_members') guardMember(row as unknown as Member, null);
       const db = load();
       setRows(table, rows(table).filter(r => r !== row));
@@ -212,9 +226,11 @@ export function createDemoApi(): DemoApi {
         db.club_entries = db.club_entries.filter(e => e.tournament_id !== id);
         db.club_knockouts = db.club_knockouts.filter(k => k.tournament_id !== id);
         db.club_payments = db.club_payments.filter(p => p.tournament_id !== id);
+        db.club_hu_matches = db.club_hu_matches.filter(m => m.tournament_id !== id);
       }
       if (table === 'club_entries') {
         db.club_knockouts = db.club_knockouts.filter(k => k.victim_id !== id);
+        db.club_hu_matches = db.club_hu_matches.filter(m => m.a !== id && m.b !== id);
         db.club_payments = db.club_payments.filter(p => p.entry_id !== id);
         promote(String(row.tournament_id));
       }
@@ -325,6 +341,38 @@ export function createDemoApi(): DemoApi {
           t.clock_elapsed_ms = a.p_elapsed_ms;
           t.clock_anchor = a.p_running ? new Date().toISOString() : null;
           if (a.p_running && ['draft', 'open', 'closed'].includes(t.status)) t.status = 'running';
+          return done();
+        }
+        case 'club_hu_round': {
+          // Mêmes règles que club_hu_round (004_club_hu.sql).
+          needStaff();
+          if (!t) throw new Error('Tournoi introuvable.');
+          if (t.status === 'finished' || t.status === 'cancelled') throw new Error('Tournoi terminé : rouvre-le pour changer les tours.');
+          const mine = db.club_hu_matches.filter(m => m.tournament_id === t.id);
+          const last = Math.max(0, ...mine.map(m => m.round));
+          const round = a.p_round as number;
+          const drop = () => { db.club_hu_matches = db.club_hu_matches.filter(m => !(m.tournament_id === t.id && m.round === round)); };
+          if (a.p_pairs === null) {
+            if (round !== last) throw new Error('Le tableau a changé : recharge la page.');
+            drop();
+            return done();
+          }
+          const pairs = a.p_pairs as { a: string; b: string | null }[];
+          if (!pairs.length) throw new Error('Aucun match à tirer.');
+          if (a.p_replace) {
+            if (round !== last) throw new Error('Le tableau a changé : recharge la page.');
+            if (mine.some(m => m.round === round && m.winner)) throw new Error('Des résultats sont saisis : ce tour ne se retire plus au sort.');
+          } else if (round !== last + 1) throw new Error('Ce tour a déjà été tiré : recharge la page.');
+          else if (mine.some(m => m.round === last && m.b && !m.winner)) throw new Error('Le tour en cours n\'est pas fini.');
+          const ids = pairs.flatMap(p => p.b ? [p.a, p.b] : [p.a]);
+          if (new Set(ids).size !== ids.length) throw new Error('Un joueur figure deux fois dans ce tour.');
+          if (ids.some(x => !db.club_entries.some(e => e.id === x && e.tournament_id === t.id))) throw new Error('Joueur inconnu.');
+          if (a.p_replace) drop();
+          const at = Date.now();
+          pairs.forEach((p, i) => db.club_hu_matches.push({
+            id: uid(), tournament_id: t.id, round, playoff: !!a.p_playoff, a: p.a, b: p.b, winner: null, created_at: new Date(at + i).toISOString(),
+          }));
+          if (['draft', 'open', 'closed'].includes(t.status)) t.status = 'running';
           return done();
         }
         case 'club_save_seats': {

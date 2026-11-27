@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, fixTournament, listChampionships, useLoad } from '../lib/club';
 import { estimateMinutes } from '../lib/structure';
+import { durationField } from '../lib/engine';
+import { suggestedRounds } from '../lib/hu';
 import { DEFAULT_SETTINGS, type Championship, type Settings, type Structure, type Tournament, type Visibility } from '../lib/types';
 import * as f from '../lib/format';
 import { go, useRoute } from '../lib/router';
@@ -66,7 +68,9 @@ function Form({ id, initial, structures, championships, started }: { id?: string
   const s = d.settings;
   const setS = (p: Partial<Settings>) => setD(x => ({ ...x, settings: { ...x.settings, ...p } }));
   const champ = championships.find(c => c.id === d.championship_id);
-  const est = estimateMinutes(d.levels, d.max_players ?? 20, d.starting_stack);
+  // Sit'N Go : les tables jouent en même temps, la durée est celle d'une table.
+  const field = durationField(d, d.max_players ?? 20);
+  const est = estimateMinutes(d.levels, field, d.starting_stack);
   const [dirty, setDirty] = useState(false);
   useEffect(() => { if (d !== initial) setDirty(true); }, [d, initial]);
   useEffect(() => {
@@ -104,7 +108,7 @@ function Form({ id, initial, structures, championships, started }: { id?: string
             <Field label="Nom" wide><input required maxLength={80} value={d.name} placeholder="Manche 1" onChange={e => set({ name: e.target.value })} /></Field>
             <Field label="Date et heure"><input type="datetime-local" required value={f.toLocalInput(d.starts_at)} onChange={e => { if (e.target.value) set({ starts_at: new Date(e.target.value).toISOString() }); }} /></Field>
             <Field label="Lieu"><input value={d.venue} maxLength={120} placeholder="Salle des associations" onChange={e => set({ venue: e.target.value })} /></Field>
-            <Field label="Championnat">
+            <Field label="Championnat" hint={s.format !== 'mtt' && d.championship_id ? `En principe, un ${s.format === 'hu' ? 'heads-up' : 'Sit\'N Go'} ne compte pas pour le championnat` : undefined}>
               <select value={d.championship_id ?? ''} onChange={e => { const c = championships.find(x => x.id === e.target.value); set({ championship_id: c?.id ?? null, ...(c ? { visibility: c.visibility } : {}) }); }}>
                 <option value="">Hors championnat</option>
                 {championships.filter(c => c.status === 'active' || c.id === d.championship_id).map(c => <option key={c.id} value={c.id}>{c.name}{c.season && ` (${c.season})`}</option>)}
@@ -115,12 +119,48 @@ function Form({ id, initial, structures, championships, started }: { id?: string
           </div>
         </div>
 
+        <div className="card stack">
+          <h2 style={{ marginBottom: 0 }}>Format de jeu</h2>
+          {/* Sit'N Go et heads-up ne comptent pas pour le championnat, sauf si l'on en choisit un ensuite. */}
+          <Choice label="Format" value={s.format} onChange={format => { setS({ format }); if (format !== 'mtt' && s.format === 'mtt') set({ championship_id: null }); }} options={[
+            { value: 'mtt', label: 'MTT', hint: 'Tables rééquilibrées au fil des éliminations, puis une table finale' },
+            { value: 'sng', label: 'Sit\'N Go', hint: 'Chacun garde sa table jusqu\'à son élimination ; un classement par table' },
+            { value: 'hu', label: 'Heads-up', hint: 'Matchs en tête-à-tête, tour après tour' },
+          ]} />
+          {s.format === 'hu' ? (
+            <>
+              <Choice label="Système" value={s.hu.system} onChange={system => setS({ hu: { ...s.hu, system } })} options={[
+                { value: 'elimination', label: 'Élimination directe', hint: 'Le perdant sort ; nouveau tirage à chaque tour' },
+                { value: 'swiss', label: 'Ronde suisse', hint: 'Personne ne sort ; chaque tour oppose des joueurs au même score' },
+              ]} />
+              {s.hu.system === 'swiss' && (
+                <div className="form three">
+                  <Field label="Nombre de tours" hint={`Vide : selon les joueurs (${suggestedRounds(d.max_players ?? 16)} tours pour ${d.max_players ?? 16})`}>
+                    <NumberInput value={s.hu.rounds || null} min={1} max={15} placeholder="Auto" onChange={x => setS({ hu: { ...s.hu, rounds: x ?? 0 } })} />
+                  </Field>
+                </div>
+              )}
+              <p className="muted">Les vainqueurs se saisissent dans l'onglet Direct. Le tournoi passe hors championnat (tu peux quand même en choisir un plus haut).</p>
+            </>
+          ) : (
+            <div className="form three">
+              <Field label="Joueurs par table"><NumberInput value={d.seats_per_table} min={2} max={10} onChange={x => set({ seats_per_table: x ?? 8 })} /></Field>
+              {s.format === 'mtt' && (
+                <Field label="Joueurs en table finale" hint="Vide : autant qu'aux autres tables">
+                  <NumberInput value={s.finalTable || null} min={2} max={10} placeholder={String(d.seats_per_table)} onChange={x => setS({ finalTable: x ?? 0 })} />
+                </Field>
+              )}
+            </div>
+          )}
+          {s.format === 'sng' && <p className="muted">Pas de rééquilibrage ni de table finale ; la dotation se calcule table par table. Le tournoi passe hors championnat (tu peux quand même en choisir un plus haut : les points se compteraient alors table par table).</p>}
+          {started && <p className="muted">Ce tournoi a commencé : changer de format recalcule les places.</p>}
+        </div>
+
         <div className="card">
           <h2>Inscriptions</h2>
-          <div className="form three">
+          <div className="form">
             <Field label="Places" hint="Vide : sans limite. Au-delà, liste d'attente."><NumberInput value={d.max_players} min={2} max={1000} onChange={x => set({ max_players: x })} placeholder="Sans limite" /></Field>
-            <Field label="Joueurs par table"><NumberInput value={d.seats_per_table} min={2} max={10} onChange={x => set({ seats_per_table: x ?? 8 })} /></Field>
-            <Field label="Arrivée tardive jusqu'au niveau" hint="0 : pas d'arrivée tardive"><NumberInput value={s.lateRegLevel} max={30} onChange={x => setS({ lateRegLevel: x ?? 0 })} /></Field>
+            {s.format !== 'hu' && <Field label="Arrivée tardive jusqu'au niveau" hint="0 : pas d'arrivée tardive"><NumberInput value={s.lateRegLevel} max={30} onChange={x => setS({ lateRegLevel: x ?? 0 })} /></Field>}
           </div>
           <div style={{ marginTop: 14 }}><VisibilityChoice value={d.visibility} onChange={visibility => set({ visibility })} /></div>
         </div>
@@ -133,7 +173,7 @@ function Form({ id, initial, structures, championships, started }: { id?: string
           </div>
           {started && <p className="muted" style={{ marginTop: 10 }}>Ce tournoi a déjà commencé : change plutôt les niveaux à venir.</p>}
           <div className="row between" style={{ marginTop: 14 }}>
-            <span className="muted">{d.levels.length === 0 ? 'Aucun niveau.' : `${f.plural(d.levels.filter(l => l.kind === 'level').length, 'niveau', 'niveaux')}${est ? `, fin probable après ${f.duration(est)} à ${d.max_players ?? 20} joueurs` : ''}.`}</span>
+            <span className="muted">{d.levels.length === 0 ? 'Aucun niveau.' : `${f.plural(d.levels.filter(l => l.kind === 'level').length, 'niveau', 'niveaux')}${est && s.format !== 'hu' ? `, fin probable après ${f.duration(est)} à ${field} joueurs${s.format === 'sng' ? ' par table' : ''}` : ''}.`}</span>
             <div className="row">
               {d.levels.length > 0 && <SaveAsModel small structure={d} suggested={d.structure_name || d.name} onSaved={saved} />}
               <button type="button" className="btn sm" onClick={() => setShowLevels(!showLevels)}>{showLevels ? 'Masquer' : 'Voir et modifier les niveaux'}</button>
@@ -141,12 +181,13 @@ function Form({ id, initial, structures, championships, started }: { id?: string
           </div>
           {(showLevels || d.levels.length === 0) && (
             <div className="stack" style={{ marginTop: 14 }}>
-              <LevelsEditor levels={d.levels} onChange={levels => set({ levels })} players={d.max_players ?? 20} stack={d.starting_stack} />
+              <LevelsEditor levels={d.levels} onChange={levels => set({ levels })} players={field} stack={d.starting_stack} />
               <div><h2 style={{ fontSize: '.92rem', marginBottom: 10 }}>Jetons</h2><ChipsEditor chips={d.chips} onChange={chips => set({ chips })} stack={d.starting_stack} /></div>
             </div>
           )}
         </div>
 
+        {s.format !== 'hu' && <>
         <div className="card stack">
           <h2 style={{ marginBottom: 0 }}>Recaves et add-on</h2>
           <Switch label="Recaves" hint="Un joueur éliminé peut reprendre un tapis" checked={s.rebuy.enabled} onChange={enabled => setS({ rebuy: { ...s.rebuy, enabled } })} />
@@ -192,6 +233,8 @@ function Form({ id, initial, structures, championships, started }: { id?: string
             </div>
           )}
         </div>
+
+        </>}
 
         <div className="card stack">
           <h2 style={{ marginBottom: 0 }}>Participation et dotation</h2>

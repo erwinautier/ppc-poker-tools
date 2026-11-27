@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { readClock, clockOf, play, pause, goTo, back, nudge, levelNumber, withinLevel } from '../src/lib/clock';
 import { generateLevels, niceBlinds, estimateMinutes, PRESETS } from '../src/lib/structure';
-import { autoPercents, chipCount, finalRows, outcomes, payouts, replay } from '../src/lib/engine';
-import { placePoints, points, standings } from '../src/lib/scoring';
-import { advise, breakTable, draw, placeOne, tablesOf } from '../src/lib/seating';
+import { autoPercents, chipCount, distinctPrizes, durationField, finalRows, outcomes, payouts, prizeFor, prizeGroups, replay } from '../src/lib/engine';
+import { placePoints, points, standings, tournamentCells } from '../src/lib/scoring';
+import { advise, breakTable, draw, layoutOf, placeOne, returnSeat, seatsNow, tablesOf, type Layout } from '../src/lib/seating';
 import { accountName, nameScore, waitingAccounts } from '../src/lib/accounts';
 import { DEFAULT_SCORING, clubTeam, isLastAdmin, withSettings, type Entry, type Knockout, type Level, type Account, type Member, type Settings, type Tournament } from '../src/lib/types';
 
@@ -246,10 +246,13 @@ describe('points et classement', () => {
   });
 });
 
+const mtt = (size: number, final = size): Layout => ({ size, final, sng: false });
+const sngOf = (size: number): Layout => ({ size, final: size, sng: true });
+
 describe('tables', () => {
   const ids = (n: number) => Array.from({ length: n }, (_, i) => `p${i}`);
-  const seated = (n: number, size: number) => {
-    const s = draw(ids(n), size);
+  const seated = (n: number, size: number | Layout) => {
+    const s = draw(ids(n), typeof size === 'number' ? mtt(size) : size);
     return ids(n).map(id => { const x = s.find(y => y.entry_id === id)!; return entry(id, { table_no: x.table_no, seat_no: x.seat_no }); });
   };
   it('tirage équilibré, sans doublon de place', () => {
@@ -264,29 +267,171 @@ describe('tables', () => {
   });
   it('joueur tardif : table la moins remplie, siège libre', () => {
     const list = seated(17, 9);
-    const s = placeOne('new', list, 9);
+    const s = placeOne('new', list, mtt(9));
     expect(tablesOf(list).find(t => t.no === s.table_no)!.players.length).toBe(8);
     expect(list.some(e => e.table_no === s.table_no && e.seat_no === s.seat_no)).toBe(false);
-    expect(placeOne('new', seated(18, 9), 9)).toMatchObject({ table_no: 3, seat_no: 1 });
+    expect(placeOne('new', seated(18, 9), mtt(9))).toMatchObject({ table_no: 3, seat_no: 1 });
   });
   it('conseils : équilibrer, fermer une table, table finale', () => {
     const list = seated(16, 8);
     const t1 = list.filter(e => e.table_no === 1);
     const two = list.filter(e => e !== t1[0] && e !== t1[1]);
-    expect(advise(two, 8)[0]).toMatchObject({ kind: 'move', from: 2, to: 1 });
-    expect(advise(list, 8)).toEqual([]);
-    expect(advise(seated(17, 8).filter(e => e.id !== 'p0'), 8)[0]).toMatchObject({ kind: 'break' });
+    expect(advise(two, mtt(8))[0]).toMatchObject({ kind: 'move', from: 2, to: 1 });
+    expect(advise(list, mtt(8))).toEqual([]);
+    expect(advise(seated(17, 8).filter(e => e.id !== 'p0'), mtt(8))[0]).toMatchObject({ kind: 'break' });
     const nine = seated(9, 8);
-    expect(advise(nine.slice(0, 8), 8)[0]).toEqual({ kind: 'final' });
+    expect(advise(nine.slice(0, 8), mtt(8))[0]).toEqual({ kind: 'final' });
   });
   it('fermer une table replace tout le monde', () => {
     const list = seated(17, 8).slice(0, 15);
     const no = tablesOf(list).at(-1)!.no;
-    const moves = breakTable(list, no, 8)!;
+    const moves = breakTable(list, no, mtt(8))!;
     const after = list.map(e => { const m = moves.find(x => x.entry_id === e.id); return m ? { ...e, table_no: m.table_no, seat_no: m.seat_no } : e; });
     expect(after.some(e => e.table_no === no)).toBe(false);
     expect(new Set(after.map(e => `${e.table_no}-${e.seat_no}`)).size).toBe(15);
-    expect(breakTable(seated(16, 8), 1, 8)).toBeNull();
+    expect(breakTable(seated(16, 8), 1, mtt(8))).toBeNull();
+  });
+
+  it('réglages du tournoi : table finale par défaut, Sit\'N Go', () => {
+    expect(layoutOf(tournament())).toEqual({ size: 8, final: 8, sng: false });
+    expect(layoutOf(tournament({ settings: settings({ finalTable: 10 }) }))).toEqual({ size: 8, final: 10, sng: false });
+    expect(layoutOf(tournament({ settings: settings({ format: 'sng', finalTable: 10 }) }))).toEqual({ size: 8, final: 8, sng: true });
+    // Un tournoi enregistré avant les formats reste un MTT.
+    expect(withSettings({ buyIn: 5 } as Partial<Settings>)).toMatchObject({ format: 'mtt', finalTable: 0 });
+  });
+
+  it('MTT, table finale plus grande : tables de 8, finale à 10', () => {
+    const l = mtt(8, 10);
+    // 10 inscrits : directement la table finale.
+    expect(tablesOf(seated(10, l))).toHaveLength(1);
+    expect(tablesOf(seated(11, l))).toHaveLength(2);
+    const list = seated(16, l);
+    const keep = (n: number) => { const out = [...list]; while (out.length > n) { const t = tablesOf(out).sort((a, b) => b.players.length - a.players.length)[0]; out.splice(out.indexOf(t.players[0]), 1); } return out; };
+    expect(advise(keep(11), l).map(a => a.kind)).not.toContain('final');
+    expect(advise(keep(10), l)[0]).toEqual({ kind: 'final' });
+    const ft = draw(keep(10).map(e => e.id), l);
+    expect(new Set(ft.map(x => x.table_no)).size).toBe(1);
+    expect(Math.max(...ft.map(x => x.seat_no!))).toBe(10);
+    expect(seatsNow(l, 1, 10)).toBe(10);
+    expect(seatsNow(l, 2, 11)).toBe(8);
+    // Retour d'un joueur à la table finale : il y a la place.
+    const at = keep(10).map(e => ({ ...e, table_no: 1, seat_no: ft.find(x => x.entry_id === e.id)!.seat_no }));
+    expect(placeOne('back', at.slice(0, 9), l)).toMatchObject({ table_no: 1, seat_no: at[9].seat_no });
+    // Fermer une table quand la finale peut accueillir tout le monde.
+    const twoFives = keep(10);
+    expect(breakTable(twoFives, tablesOf(twoFives)[1].no, l)).toHaveLength(5);
+  });
+
+  it('MTT, table finale plus petite : tables de 10, finale à 9', () => {
+    const l = mtt(10, 9);
+    const list = seated(20, l);
+    const left = (n: number) => { const out = [...list]; while (out.length > n) { const t = tablesOf(out).sort((a, b) => b.players.length - a.players.length)[0]; out.splice(out.indexOf(t.players[0]), 1); } return out; };
+    // À 10, deux tables de 5 : on ne fusionne pas encore.
+    expect(advise(left(10), l)).toEqual([]);
+    expect(advise(left(9), l)[0]).toEqual({ kind: 'final' });
+    expect(advise(left(11), l).map(a => a.kind)).not.toContain('break');
+  });
+
+  it('Sit\'N Go : ni équilibrage, ni fermeture, ni table finale', () => {
+    const l = sngOf(8);
+    const list = seated(24, l);
+    expect(tablesOf(list)).toHaveLength(3);
+    // Table 1 réduite à 2 joueurs, les autres pleines : aucun conseil.
+    const t1 = list.filter(e => e.table_no === 1);
+    const lopsided = list.filter(e => !t1.slice(2).includes(e));
+    expect(advise(lopsided, l)).toEqual([]);
+    expect(advise(lopsided.slice(0, 7), l)).toEqual([]);
+    // Un joueur sans place reste signalé.
+    expect(advise([...lopsided, entry('late')], l)).toEqual([{ kind: 'unseated', ids: ['late'] }]);
+    // Seize joueurs, tables de 8 : deux tables, pas une table finale.
+    expect(tablesOf(seated(8, l))).toHaveLength(1);
+    expect(tablesOf(seated(9, l))).toHaveLength(2);
+  });
+
+  it('Sit\'N Go : un retardataire ne rejoint pas une table terminée', () => {
+    const l = sngOf(8);
+    const list = seated(16, l);
+    const t1 = list.filter(e => e.table_no === 1);
+    const t2 = list.filter(e => e.table_no === 2);
+    const alive = [t1[0], ...t2.slice(0, 6)];
+    expect(placeOne('late', alive, l).table_no).toBe(2);
+    // Une élimination annulée : retour à sa propre table, même si une autre est moins remplie.
+    const back = { ...t2[7] };
+    const taken = [...t1.slice(0, 3), ...t2.slice(0, 7), { ...entry('late'), table_no: 2, seat_no: back.seat_no }];
+    const seat = returnSeat(back, taken, l);
+    expect(seat.table_no).toBe(2);
+    expect(taken.some(e => e.table_no === 2 && e.seat_no === seat.seat_no)).toBe(false);
+  });
+});
+
+describe('Sit\'N Go : classement par table', () => {
+  const s = settings({ format: 'sng' });
+  const at = (table: number, n: number) => Array.from({ length: n }, (_, i) => entry(`t${table}-${i + 1}`, { table_no: table, seat_no: i + 1 }));
+  const list = [...at(1, 4), ...at(2, 3)];
+
+  it('places comptées dans sa table, ex æquo d\'une table à l\'autre', () => {
+    const r = replay(list, [ko('t1-1', ['t1-2']), ko('t2-1', ['t2-2']), ko('t1-3', ['t1-2'])], s);
+    expect(r.byId.get('t1-1')!.position).toBe(4);
+    expect(r.byId.get('t1-3')!.position).toBe(3);
+    expect(r.byId.get('t2-1')!.position).toBe(3);
+    expect(r.rankings.map(g => [g.table, g.total, g.alive.length])).toEqual([[1, 4, 2], [2, 3, 2]]);
+    expect(r.rankingOf('t2-3').table).toBe(2);
+    expect(r.done).toBe(false);
+  });
+
+  it('tournoi joué quand chaque table a son vainqueur', () => {
+    const kos = [ko('t1-1'), ko('t1-3'), ko('t1-4', ['t1-2']), ko('t2-1'), ko('t2-3', ['t2-2'])];
+    const r = replay(list, kos.slice(0, 4), s);
+    expect(r.done).toBe(false);
+    const done = replay(list, kos, s);
+    expect(done.done).toBe(true);
+    const rows = finalRows(done, s);
+    expect(rows.filter(x => x.position === 1).map(x => x.entry_id).sort()).toEqual(['t1-2', 't2-2']);
+    expect(rows.find(x => x.entry_id === 't1-1')!.position).toBe(4);
+    expect(rows.find(x => x.entry_id === 't2-1')!.position).toBe(3);
+  });
+
+  it('un MTT garde un seul classement, tables ou pas', () => {
+    const r = replay(list, [ko('t1-1'), ko('t2-1')], settings());
+    expect(r.rankings).toHaveLength(1);
+    expect(r.byId.get('t1-1')!.position).toBe(7);
+    expect(r.byId.get('t2-1')!.position).toBe(6);
+  });
+
+  it('points de championnat sur le nombre de joueurs de la table', () => {
+    const scoring = { ...DEFAULT_SCORING, method: 'linear' as const, factor: 1, participation: 0 };
+    const t = tournament({ settings: s });
+    const cells = tournamentCells(t, scoring, list, [ko('t1-1'), ko('t2-1')]);
+    const of = (id: string) => cells.find(c => c.entryId === id)!;
+    expect([of('t1-1').position, of('t1-1').players, of('t1-1').points]).toEqual([4, 4, 1]);
+    expect([of('t2-1').position, of('t2-1').players, of('t2-1').points]).toEqual([3, 3, 1]);
+    // Tournoi terminé : la taille de la table se retrouve depuis les places.
+    const finished = tournament({ settings: s, status: 'finished' });
+    const saved = list.map(e => ({ ...e, final_position: e.id.endsWith('-1') ? 1 : 2, final_kos: 0, final_bounty: 0 }));
+    const out = outcomes(finished, saved, []);
+    expect(out.find(o => o.entry.id === 't1-2')).toMatchObject({ field: 4, table: 1 });
+    expect(out.find(o => o.entry.id === 't2-2')).toMatchObject({ field: 3, table: 2 });
+  });
+
+  it('une cagnotte par table', () => {
+    const t = tournament({ settings: settings({ format: 'sng', buyIn: 10, payouts: { mode: 'percent', percents: [70, 30], lots: [], rounding: 1 } }) });
+    const groups = prizeGroups(t, list);
+    expect(groups.map(g => [g.table, g.players, g.list.map(p => p.amount)])).toEqual([[1, 4, [28, 12]], [2, 3, [21, 9]]]);
+    expect(prizeFor(groups, { position: 1, table: 2 })!.amount).toBe(21);
+    expect(distinctPrizes(groups)).toHaveLength(2);
+    // Avant le tirage : tables estimées comme le ferait le tirage.
+    const before = prizeGroups(t, Array.from({ length: 16 }, (_, i) => entry(`x${i}`)));
+    expect(before.map(g => g.players)).toEqual([8, 8]);
+    expect(distinctPrizes(before)).toHaveLength(1);
+    // MTT : une seule cagnotte.
+    expect(prizeGroups(tournament({ settings: settings({ buyIn: 10, payouts: { mode: 'percent', percents: [70, 30], lots: [], rounding: 1 } }) }), list)[0].list.map(p => p.amount)).toEqual([49, 21]);
+  });
+
+  it('durée estimée sur une table', () => {
+    expect(durationField(tournament({ settings: s }), 30)).toBe(8);
+    expect(durationField(tournament({ settings: s }), 13)).toBe(7);
+    expect(durationField(tournament({ settings: s }), 5)).toBe(5);
+    expect(durationField(tournament(), 30)).toBe(30);
   });
 });
 

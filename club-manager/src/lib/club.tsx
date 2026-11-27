@@ -7,7 +7,7 @@ import { adoptKioskLink, kioskKey, setKiosk } from './kiosk';
 import { createDemoApi, type DemoApi } from './demoApi';
 import { createSupabaseApi } from './supabaseApi';
 import { setDAAdmin } from '../../../shared/ppc-da.js';
-import { withScoring, withSettings, type Account, type AccountStatus, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Tournament } from './types';
+import { withScoring, withSettings, type Account, type AccountStatus, type Championship, type Entry, type HuMatch, type JoinRequest, type Knockout, type Member, type Payment, type Tournament } from './types';
 
 export const isDemo = new URLSearchParams(location.search).has('demo');
 export const api: Api = isDemo ? createDemoApi() : createSupabaseApi();
@@ -224,17 +224,33 @@ export interface TournamentBundle {
   knockouts: Knockout[];
   paid: Set<string>;
   championship: Championship | null;
+  /** Heads-up : les matchs de tous les tours. */
+  matches: HuMatch[];
+  /** Heads-up : le script 004 n'a pas encore été exécuté. */
+  huMissing: boolean;
+}
+
+/** Matchs d'un tournoi heads-up ; liste vide (et signalée) tant que le script 004 manque. */
+async function huMatchesOf(t: Tournament): Promise<{ matches: HuMatch[]; huMissing: boolean }> {
+  if (withSettings(t.settings).format !== 'hu') return { matches: [], huMissing: false };
+  try {
+    return { matches: await api.select<HuMatch>('club_hu_matches', { eq: { tournament_id: t.id }, order: ['round', 'asc'] }), huMissing: false };
+  } catch (e) {
+    if (e instanceof NotInstalled) return { matches: [], huMissing: true };
+    throw e;
+  }
 }
 
 export function useTournament(id: string, isStaff: boolean): Loaded<TournamentBundle | 'missing'> {
   return useLoad(async () => {
     const [t] = await api.select<Tournament>('club_tournaments', { eq: { id } });
     if (!t) return 'missing' as const;
-    const [entries, knockouts, payments, champs] = await Promise.all([
+    const [entries, knockouts, payments, champs, hu] = await Promise.all([
       api.select<Entry>('club_entries', { eq: { tournament_id: id }, order: ['registered_at', 'asc'] }),
       api.select<Knockout>('club_knockouts', { eq: { tournament_id: id }, order: ['seq', 'asc'] }),
       isStaff ? api.select<Payment>('club_payments', { eq: { tournament_id: id } }) : Promise.resolve([]),
       t.championship_id ? api.select<Championship>('club_championships', { eq: { id: t.championship_id } }) : Promise.resolve([]),
+      huMatchesOf(t),
     ]);
     return {
       t: fixTournament(t),
@@ -242,6 +258,7 @@ export function useTournament(id: string, isStaff: boolean): Loaded<TournamentBu
       knockouts: knockouts.map(fixKnockout),
       paid: new Set(payments.map(p => p.entry_id)),
       championship: champs[0] ? fixChampionship(champs[0]) : null,
+      ...hu,
     };
   }, [id, isStaff], { tournamentId: id });
 }

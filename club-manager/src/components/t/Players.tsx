@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { api, listMembers, useClub, useLoad, useNow } from '../../lib/club';
 import { withinLevel } from '../../lib/clock';
 import { money, participants, replay } from '../../lib/engine';
-import { placeOne } from '../../lib/seating';
+import { layoutOf, placeOne } from '../../lib/seating';
 import * as f from '../../lib/format';
 import type { Entry } from '../../lib/types';
 import type { TabProps } from '../../pages/Tournament';
@@ -16,7 +16,7 @@ export async function checkIn(b: TabProps['b'], e: Entry) {
   if (t.status !== 'running') return;
   const alive = replay(participants(t, entries), knockouts, t.settings).alive.map(p => p.entry);
   if (alive.some(x => x.table_no !== null)) {
-    await api.rpc('club_save_seats', { p_tournament: t.id, p_seats: [placeOne(e.id, alive, t.seats_per_table)] });
+    await api.rpc('club_save_seats', { p_tournament: t.id, p_seats: [placeOne(e.id, alive, layoutOf(t))] });
   }
 }
 

@@ -6,12 +6,13 @@ import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { MissingRpc, NotInstalled, messageOf, type Api } from '../src/lib/api';
-import { DEFAULT_SCORING, DEFAULT_SETTINGS, type Account, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from '../src/lib/types';
+import { DEFAULT_SCORING, DEFAULT_SETTINGS, type Account, type Championship, type Entry, type HuMatch, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from '../src/lib/types';
 import { generateLevels, PRESETS, DEFAULT_CHIPS } from '../src/lib/structure';
 
 const SQL = readFileSync(new URL('../supabase/001_club.sql', import.meta.url), 'utf8');
 const SQL2 = readFileSync(new URL('../supabase/002_club_accounts.sql', import.meta.url), 'utf8');
 const SQL3 = readFileSync(new URL('../supabase/003_club_bar.sql', import.meta.url), 'utf8');
+const SQL4 = readFileSync(new URL('../supabase/004_club_hu.sql', import.meta.url), 'utf8');
 const USERS: Record<string, string> = {
   admin: '00000000-0000-0000-0000-0000000000b1',
   alice: '00000000-0000-0000-0000-0000000000b2',
@@ -421,4 +422,40 @@ it('la buvette : consos, paiements, coupure de réseau et tablette', async () =>
   expect(await said(bar.counter())).toBe('Cet accès au comptoir n\'est plus valable.');
   leaveKiosk();
   expect((await bar.load())!.slate.due).toBe(100);
+});
+
+it('heads-up : avant puis après le script 004', async () => {
+  const said = (p: Promise<unknown>) => p.then(() => 'accepté', e => messageOf(e));
+  await login('admin');
+  const [t] = await api.insert<Tournament>('club_tournaments', {
+    name: 'HU', description: '', venue: '', starts_at: new Date().toISOString(), visibility: 'members', max_players: null, seats_per_table: 8,
+    starting_stack: 20000, structure_name: '', levels: [], chips: [], status: 'open',
+    settings: { ...DEFAULT_SETTINGS, format: 'hu', hu: { system: 'elimination', rounds: 0 } },
+  });
+  const es = await api.insert<Entry>('club_entries', ['A', 'B', 'C'].map(name => ({ tournament_id: t.id, member_id: null, name, status: 'registered', checked_in: true })));
+  await expect(api.select('club_hu_matches', { eq: { tournament_id: t.id } })).rejects.toBeInstanceOf(NotInstalled);
+  await db.exec(SQL4);
+
+  const round = (n: number, pairs: { a: string; b: string | null }[] | null, replace = false) =>
+    api.rpc('club_hu_round', { p_tournament: t.id, p_round: n, p_pairs: pairs, p_replace: replace, p_playoff: false });
+  const matches = () => api.select<HuMatch>('club_hu_matches', { eq: { tournament_id: t.id }, order: ['round', 'asc'] });
+  // Deux joueurs s'affrontent, le troisième est exempté ; le tournoi passe en direct.
+  await round(1, [{ a: es[0].id, b: es[1].id }, { a: es[2].id, b: null }]);
+  expect((await matches()).map(m => [m.round, m.b === null]).sort()).toEqual([[1, false], [1, true]]);
+  expect((await api.select<Tournament>('club_tournaments', { eq: { id: t.id } }))[0].status).toBe('running');
+  const duel = (await matches()).find(m => m.b)!;
+  await api.update('club_hu_matches', duel.id, { winner: duel.a });
+  expect(await said(round(1, [{ a: es[0].id, b: es[2].id }]))).toMatch(/déjà été tiré/);
+  await round(2, [{ a: duel.a, b: es[2].id }]);
+  expect(await said(api.update('club_hu_matches', duel.id, { winner: duel.b }))).toMatch(/tour suivant/);
+  await round(2, null);
+  expect((await matches()).every(m => m.round === 1)).toBe(true);
+
+  // Une adhérente voit le tableau, sans pouvoir le modifier.
+  await login('alice');
+  expect(await matches()).toHaveLength(2);
+  expect(await said(api.update('club_hu_matches', duel.id, { winner: null }))).toBe('Action réservée aux gestionnaires.');
+  expect(await said(round(2, [{ a: duel.a, b: es[2].id }]))).toBe('Action réservée aux gestionnaires.');
+  await login('admin');
+  await api.remove('club_tournaments', t.id);
 });

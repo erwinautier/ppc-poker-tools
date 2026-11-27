@@ -68,20 +68,19 @@ export interface StandingsInput {
 
 /** Points d'un tournoi pour chaque joueur engagé. */
 export function tournamentCells(t: Tournament, scoring: Scoring, entries: Entry[], knockouts: Knockout[]): (Cell & { entry: Entry; bounty: number })[] {
-  const list = outcomes(t, entries, knockouts);
-  const players = list.length;
-  return list.map(o => ({
+  // Sit'N Go : la place et les points se comptent parmi les joueurs de sa table.
+  return outcomes(t, entries, knockouts).map(o => ({
     tournamentId: t.id,
     entryId: o.entry.id,
     entry: o.entry,
     position: o.position,
-    players,
+    players: o.field,
     kos: o.kos,
     bounty: o.bounty,
     counted: true,
     provisional: t.status !== 'finished',
     points: points(scoring, {
-      position: o.position, players, kos: o.kos,
+      position: o.position, players: o.field, kos: o.kos,
       bountyPts: t.settings.bounty.mode !== 'none' && t.settings.bounty.unit === 'pts' ? o.bounty : 0,
       adjust: Number(o.entry.points_adjust) || 0,
       coefficient: t.settings.coefficient,

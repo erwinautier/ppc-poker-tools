@@ -2,7 +2,7 @@
 import { generateLevels, PRESETS, DEFAULT_CHIPS } from './structure';
 import { DEFAULT_BAR } from './bar';
 import type { BarDb } from './demoBar';
-import { DEFAULT_SCORING, withSettings, type Account, type Championship, type Entry, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from './types';
+import { DEFAULT_SCORING, withSettings, type Account, type Championship, type Entry, type HuMatch, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from './types';
 
 export interface DemoDb {
   club_members: Member[];
@@ -13,6 +13,7 @@ export interface DemoDb {
   club_entries: Entry[];
   club_payments: Payment[];
   club_knockouts: Knockout[];
+  club_hu_matches: HuMatch[];
   refused: string[];
   bar: BarDb;
   accounts: Pick<Account, 'user_id' | 'username' | 'email' | 'confirmed' | 'created_at'>[];
@@ -143,6 +144,8 @@ export function seedDemo(now: number): DemoDb {
   shuffled(members.filter(m => m !== members[3]), r).slice(0, 14).forEach((m, i) => addEntry(next, m, { status: i < 12 ? 'registered' : 'waitlist', registered_at: iso(now - 5 * DAY + i * 3_600_000) }));
   const fun = addTournament({ name: 'Soirée Turbo de Noël', championship_id: null, starts_at: evening(24, 19), status: 'open', max_players: 30, venue: 'Bar Le Ponant', structure_name: structures[0].name, levels: structures[0].levels, starting_stack: structures[0].starting_stack, settings: withSettings({ bounty: { mode: 'progressive', unit: 'pts', amount: 10 } }) });
   shuffled(members, r).slice(0, 7).forEach(m => addEntry(fun, m));
+  const hu = addTournament({ name: 'Heads-up d\'hiver', championship_id: null, starts_at: evening(9), status: 'open', max_players: 16, description: 'Ronde suisse en quatre tours : tout le monde joue jusqu\'au bout.', settings: withSettings({ format: 'hu', hu: { system: 'swiss', rounds: 4 } }) });
+  shuffled(members, r).slice(0, 9).forEach(m => addEntry(hu, m));
   addTournament({ name: 'Finale de la saison', starts_at: evening(170), status: 'draft', settings: withSettings({ coefficient: 1.5 }) });
 
   return {
@@ -154,6 +157,7 @@ export function seedDemo(now: number): DemoDb {
     club_entries: entries,
     club_payments: payments,
     club_knockouts: knockouts,
+    club_hu_matches: [],
     refused: ['demo-user-94'],
     bar: seedBar(members, now),
     accounts: [
