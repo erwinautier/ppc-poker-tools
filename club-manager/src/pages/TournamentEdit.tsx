@@ -6,6 +6,7 @@ import * as f from '../lib/format';
 import { go, useRoute } from '../lib/router';
 import { Choice, Field, Icon, NumberInput, State, Switch, useAction } from '../components/ui';
 import { ChipsEditor, LevelsEditor } from '../components/LevelsEditor';
+import { listModels, ModelSelect, SaveAsModel } from '../components/StructureModels';
 
 type Draft = Pick<Tournament, 'championship_id' | 'name' | 'description' | 'venue' | 'starts_at' | 'visibility' | 'max_players' | 'seats_per_table' | 'starting_stack' | 'structure_name' | 'levels' | 'chips' | 'settings'>;
 
@@ -24,7 +25,7 @@ export function TournamentEdit({ id }: { id?: string }) {
   const champParam = route.query.get('championnat');
   const q = useLoad(async () => {
     const [structures, championships, source] = await Promise.all([
-      api.select<Structure>('club_structures', { order: ['name', 'asc'] }),
+      listModels(),
       listChampionships(),
       id || copyOf ? api.select<Tournament>('club_tournaments', { eq: { id: (id ?? copyOf)! } }) : Promise.resolve([]),
     ]);
@@ -57,6 +58,7 @@ export function nextName(name: string): string {
 
 function Form({ id, initial, structures, championships, started }: { id?: string; initial: Draft; structures: Structure[]; championships: Championship[]; started: boolean }) {
   const [d, setD] = useState(initial);
+  const [models, setModels] = useState(structures);
   const [publish, setPublish] = useState(true);
   const [showLevels, setShowLevels] = useState(false);
   const [run, busy] = useAction();
@@ -74,9 +76,10 @@ function Form({ id, initial, structures, championships, started }: { id?: string
     return () => window.removeEventListener('beforeunload', on);
   }, [dirty]);
 
-  const choose = (sid: string) => {
-    const st = structures.find(x => x.id === sid);
-    if (st) set({ structure_name: st.name, levels: st.levels, chips: st.chips, starting_stack: st.starting_stack });
+  const choose = (st: Structure) => set({ structure_name: st.name, levels: st.levels, chips: st.chips, starting_stack: st.starting_stack });
+  const saved = (m: Structure) => {
+    setModels(l => [...l.filter(x => x.id !== m.id), m].sort((a, b) => a.name.localeCompare(b.name, 'fr')));
+    set({ structure_name: m.name });
   };
 
   const save = () => run(async () => {
@@ -125,18 +128,16 @@ function Form({ id, initial, structures, championships, started }: { id?: string
         <div className="card">
           <h2>Structure</h2>
           <div className="form">
-            <Field label="Partir d'un modèle">
-              <select value={structures.find(x => x.name === d.structure_name)?.id ?? ''} onChange={e => choose(e.target.value)}>
-                <option value="">{structures.length ? 'Structure propre à ce tournoi' : 'Aucun modèle enregistré'}</option>
-                {structures.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-              </select>
-            </Field>
+            <Field label="Partir d'un modèle"><ModelSelect models={models} current={d.structure_name} onPick={choose} /></Field>
             <Field label="Tapis de départ"><NumberInput value={d.starting_stack} min={100} step={100} onChange={x => set({ starting_stack: x ?? 10000 })} /></Field>
           </div>
           {started && <p className="muted" style={{ marginTop: 10 }}>Ce tournoi a déjà commencé : change plutôt les niveaux à venir.</p>}
           <div className="row between" style={{ marginTop: 14 }}>
             <span className="muted">{d.levels.length === 0 ? 'Aucun niveau.' : `${f.plural(d.levels.filter(l => l.kind === 'level').length, 'niveau', 'niveaux')}${est ? `, fin probable après ${f.duration(est)} à ${d.max_players ?? 20} joueurs` : ''}.`}</span>
-            <button type="button" className="btn sm" onClick={() => setShowLevels(!showLevels)}>{showLevels ? 'Masquer' : 'Voir et modifier les niveaux'}</button>
+            <div className="row">
+              {d.levels.length > 0 && <SaveAsModel small structure={d} suggested={d.structure_name || d.name} onSaved={saved} />}
+              <button type="button" className="btn sm" onClick={() => setShowLevels(!showLevels)}>{showLevels ? 'Masquer' : 'Voir et modifier les niveaux'}</button>
+            </div>
           </div>
           {(showLevels || d.levels.length === 0) && (
             <div className="stack" style={{ marginTop: 14 }}>
