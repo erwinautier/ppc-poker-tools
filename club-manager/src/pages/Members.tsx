@@ -72,7 +72,10 @@ export function Members() {
         <section className="card">
           <div className="sechead" style={{ flexWrap: 'wrap' }}>
             <h2>Gestion du club</h2>
-            {isAdmin && <button className="btn sm" onClick={() => setNaming(true)}><Icon name="plus" size={15} />Nommer un gestionnaire</button>}
+            {isAdmin && <div className="row">
+              <a className="btn sm" href="#/rejoindre"><Icon name="edit" size={15} />Modifier la page Rejoindre le club</a>
+              <button className="btn sm" onClick={() => setNaming(true)}><Icon name="plus" size={15} />Nommer un gestionnaire</button>
+            </div>}
           </div>
           <p className="muted">
             Un gestionnaire s'occupe des tournois, championnats, structures, horloge et adhérents. Un administrateur nomme en plus les gestionnaires.

@@ -88,6 +88,9 @@ export function Parcours() {
 
       <Attestation done={done} validated={validated} />
 
+      {/* Seul accès interne à la page publique « Rejoindre le club » (rejoindre/), volontairement discret. */}
+      <p className="muted center small">Envie de jouer en vrai ? <a href="/rejoindre/">Rejoindre le club</a></p>
+
       <p className="muted center small">Ta progression est enregistrée sur cet appareil uniquement.</p>
       <button className="btn ghost sm" style={{ alignSelf: 'center' }} onClick={() => {
         if (confirm('Effacer toute ta progression (défis, scores, fiches débloquées) sur cet appareil ? Cette action est définitive.')) resetAll();

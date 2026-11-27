@@ -3,6 +3,7 @@
  * Build script for the PPC Poker Tools monorepo.
  * Builds every app, then combines outputs into dist/:
  *   dist/           ← hub (index.html + logo)
+ *   dist/rejoindre/ ← rejoindre/ (page publique « Rejoindre le club », à part de l'accueil)
  *   dist/editor/    ← range-editor build
  *   dist/trainer/   ← poker-trainer build
  *   dist/equity/    ← equity-calc build
@@ -62,5 +63,9 @@ mkdirSync(resolve(ROOT, 'dist', 'shared'), { recursive: true });
 for (const f of ['ppc-da.css', 'ppc-da.js']) {
   cpSync(resolve(ROOT, 'shared', f), resolve(ROOT, 'dist', 'shared', f));
 }
+
+// 6. Page publique « Rejoindre le club » : sans build, à part de l'accueil (bouton de
+//    l'accueil, lien de l'Initiation, QR codes). Questions fréquentes : faq.json, ou la base.
+cpSync(resolve(ROOT, 'rejoindre'), resolve(ROOT, 'dist', 'rejoindre'), { recursive: true });
 
 console.log('\n✅ Build complete → dist/');

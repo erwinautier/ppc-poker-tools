@@ -2,6 +2,7 @@
 import { generateLevels, PRESETS, DEFAULT_CHIPS } from './structure';
 import { DEFAULT_BAR } from './bar';
 import type { BarDb } from './demoBar';
+import type { JoinPageRow } from './joinPage';
 import { DEFAULT_SCORING, withSettings, type Account, type Championship, type Entry, type HuMatch, type JoinRequest, type Knockout, type Member, type Payment, type Structure, type Tournament } from './types';
 
 export interface DemoDb {
@@ -14,6 +15,7 @@ export interface DemoDb {
   club_payments: Payment[];
   club_knockouts: Knockout[];
   club_hu_matches: HuMatch[];
+  club_join_page: JoinPageRow[];
   refused: string[];
   bar: BarDb;
   accounts: Pick<Account, 'user_id' | 'username' | 'email' | 'confirmed' | 'created_at'>[];
@@ -158,6 +160,7 @@ export function seedDemo(now: number): DemoDb {
     club_payments: payments,
     club_knockouts: knockouts,
     club_hu_matches: [],
+    club_join_page: [],
     refused: ['demo-user-94'],
     bar: seedBar(members, now),
     accounts: [

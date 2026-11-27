@@ -149,6 +149,23 @@
       color: var(--ppc-or);
     }
 
+    /* Bouton vers la page publique « Rejoindre le club » (rejoindre/, hors de l'accueil) */
+    .join {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: 1.5px solid var(--ppc-or);
+      color: var(--ppc-or);
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .join:hover { background: var(--ppc-or); color: var(--ppc-prune); }
+    .join:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    :root[data-da="nuit"] .join { text-transform: uppercase; font-size: 0.74rem; letter-spacing: 0.12em; }
+
     /* Séparateur aux quatre enseignes, comme sur le flyer */
     .suits {
       display: flex;
@@ -334,6 +351,7 @@
         <h1 class="title">Poker Tools</h1>
         <p class="motto">Apprends. Progresse. Partage.</p>
       </div>
+      <a href="/rejoindre/" class="join">Rejoindre le club</a>
     </div>
 
     <div class="suits only-nuit" aria-hidden="true">♣♦♥♠</div>
