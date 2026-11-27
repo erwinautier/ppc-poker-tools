@@ -134,6 +134,29 @@ export function replay(entries: Entry[], knockouts: Knockout[], settings: Settin
   };
 }
 
+/**
+ * Tombeurs possibles de « victim » : les joueurs encore en course, et en Sit'N Go
+ * ceux de sa table seulement. Les joueurs de sa table d'abord, puis par nom.
+ */
+export function possibleKillers(r: Replay, victim: Entry, s: Pick<Settings, 'format'>): PlayerState[] {
+  const pool = isSng(s) && victim.table_no !== null ? r.rankingOf(victim.id).alive : r.alive;
+  return pool.filter(p => p.entry.id !== victim.id)
+    .sort((a, z) => Number(z.entry.table_no === victim.table_no) - Number(a.entry.table_no === victim.table_no)
+      || a.entry.name.localeCompare(z.entry.name, 'fr'));
+}
+
+/**
+ * Le tournoi tel qu'il était juste avant l'élimination « k » : la victime à ce
+ * moment (prime sur sa tête) et qui pouvait alors l'éliminer. Sert à changer le
+ * tombeur d'une élimination déjà saisie sans toucher à son ordre, donc aux places.
+ */
+export function beforeKnockout(entries: Entry[], knockouts: Knockout[], k: Knockout, s: Settings): { victim: PlayerState; killers: PlayerState[] } | null {
+  const r = replay(entries, knockouts.filter(x => Number(x.seq) < Number(k.seq)), s);
+  const victim = r.byId.get(k.victim_id);
+  if (!victim) return null;
+  return { victim, killers: possibleKillers(r, victim.entry, s) };
+}
+
 export interface ResultRow { entry_id: string; position: number; kos: number; bounty: number }
 
 /** Classement complet, quand il ne reste qu'un joueur (un par table en Sit'N Go). */

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { api, useClub, useNow, useWakeLock } from '../../lib/club';
 import { levelNumber, withinLevel, type ClockView } from '../../lib/clock';
-import { chipCount, distinctPrizes, finalRows, isSng, participants, prizeGroups, replay, type PlayerState, type PrizeGroup, type Replay } from '../../lib/engine';
+import { beforeKnockout, chipCount, distinctPrizes, finalRows, isSng, participants, possibleKillers, prizeGroups, replay, type PlayerState, type PrizeGroup, type Replay } from '../../lib/engine';
 import { layoutOf, returnSeat } from '../../lib/seating';
 import * as f from '../../lib/format';
 import { go } from '../../lib/router';
@@ -30,6 +30,16 @@ export async function undoKnockout(b: TabProps['b'], k: Knockout) {
   }
 }
 
+/**
+ * Change les tombeurs d'une élimination, sans toucher à son ordre ni aux places.
+ * La base ne prévient les écrans connectés qu'à l'ajout ou au retrait d'une
+ * élimination : on touche le tournoi pour qu'ils se rechargent aussi.
+ */
+async function setKillers(t: Tournament, id: string, killers: string[]) {
+  await api.update('club_knockouts', id, { killer_ids: killers });
+  await api.update('club_tournaments', t.id, { rev: Number(t.rev) + 1 });
+}
+
 export function Live({ b, reload }: TabProps) {
   const { t, entries, knockouts } = b;
   const { isStaff, me } = useClub();
@@ -37,6 +47,7 @@ export function Live({ b, reload }: TabProps) {
   const v = viewOf(t, now);
   const c = useClockCommands(t, v, reload);
   const [victim, setVictim] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Knockout | null>(null);
   const [run, busy] = useAction();
   const confirm = useConfirm();
   useWakeLock(t.status === 'running');
@@ -110,6 +121,9 @@ export function Live({ b, reload }: TabProps) {
                   <div key={k.id}>
                     <span className="where">{k.rebuy ? '↻' : p?.position ?? ''}</span>
                     <p>{p?.entry.name ?? 'Joueur retiré'}{k.rebuy && ' (recave)'}<small>{sng && p?.entry.table_no ? `table ${p.entry.table_no}, ` : ''}{killers ? `par ${killers}` : 'sans tombeur'}{k.level ? `, niveau ${k.level}` : ''}</small></p>
+                    {isStaff && p && (
+                      <button className="iconbtn" disabled={busy} aria-label={`Changer le tombeur de ${p.entry.name}`} title="Changer le tombeur" onClick={() => setEditing(k)}><Icon name="edit" size={15} /></button>
+                    )}
                     {isStaff && i === 0 && <button className="btn sm" disabled={busy} onClick={() => undo(k)}><Icon name="undo" size={14} />Annuler</button>}
                     {isStaff && i > 0 && (
                       <button className="iconbtn" disabled={busy} aria-label={`Annuler l'élimination de ${p?.entry.name}`} title="Annuler cette élimination" onClick={async () => {
@@ -130,6 +144,7 @@ export function Live({ b, reload }: TabProps) {
       </div>
 
       {victimState?.alive && <KnockoutModal b={b} r={r} v={v} victim={victimState} reload={reload} onClose={() => setVictim(null)} />}
+      {editing && <KillerModal b={b} r={r} k={editing} reload={reload} onClose={() => setEditing(null)} />}
     </div>
   );
 }
@@ -217,7 +232,7 @@ function Alive({ r, t, v, isStaff, onKo }: { r: Replay; t: Tournament; v: ClockV
 
 export function KnockoutModal({ b, r, v, victim, reload, onClose }: TabProps & { r: Replay; v: ClockView; victim: PlayerState; onClose: () => void }) {
   const { t } = b;
-  const [killers, setKillers] = useState<string[]>([]);
+  const [killers, setPicked] = useState<string[]>([]);
   const [nobody, setNobody] = useState(false);
   const [run, busy] = useAction();
   const toast = useToast();
@@ -226,8 +241,7 @@ export function KnockoutModal({ b, r, v, victim, reload, onClose }: TabProps & {
 
   const ranking = r.rankingOf(e.id);
   // Sit'N Go : seuls les joueurs de sa table peuvent l'éliminer.
-  const others = (isSng(s) && e.table_no !== null ? ranking.alive : r.alive).filter(p => p.entry.id !== e.id)
-    .sort((a, z) => Number(z.entry.table_no === e.table_no) - Number(a.entry.table_no === e.table_no) || a.entry.name.localeCompare(z.entry.name, 'fr'));
+  const others = possibleKillers(r, e, s);
   const canRebuy = s.rebuy.enabled && withinLevel(t.levels, v.index, s.rebuy.untilLevel) && (s.rebuy.max === 0 || e.rebuys < s.rebuy.max);
   const place = ranking.alive.length;
   const chosen = nobody || killers.length > 0;
@@ -251,29 +265,91 @@ export function KnockoutModal({ b, r, v, victim, reload, onClose }: TabProps & {
   return (
     <Modal title={`Qui élimine ${e.name} ?`} onClose={onClose} wide>
       <div className="stack">
-        <div className="picks">
-          {others.map(p => {
-            const on = killers.includes(p.entry.id);
-            return (
-              <button key={p.entry.id} type="button" className={`pick ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => {
-                setNobody(false);
-                setKillers(l => on ? l.filter(x => x !== p.entry.id) : [...l, p.entry.id]);
-              }}>{p.entry.name}<small>{p.entry.table_no ? `table ${p.entry.table_no}` : ''}{p.kos > 0 ? `${p.entry.table_no ? ' · ' : ''}${f.kos(p.kos)}` : ''}</small></button>
-            );
-          })}
-          <button type="button" className={`pick ${nobody ? 'on' : ''}`} aria-pressed={nobody} onClick={() => { setKillers([]); setNobody(!nobody); }}>Personne<small>abandon, pénalité</small></button>
-        </div>
-        <p className="muted">
-          {killers.length > 1 ? `KO partagé entre ${killers.length} joueurs. ` : ''}
-          {s.bounty.mode !== 'none' && victim.head > 0 && killers.length > 0 && (s.bounty.mode === 'progressive'
-            ? `Prime de ${bountyValue(t, victim.head)} : moitié gagnée, moitié ajoutée à la tête ${killers.length > 1 ? 'des tombeurs' : 'du tombeur'}. `
-            : `Prime de ${bountyValue(t, victim.head)}${killers.length > 1 ? ' à partager' : ''}. `)}
-          {!chosen && 'Choisis un joueur, ou plusieurs pour un KO partagé.'}
-        </p>
+        <KillerPicks t={t} victim={victim} others={others} killers={killers} nobody={nobody} onChange={(l, n) => { setPicked(l); setNobody(n); }} />
         <div className="row end">
           <button className="btn" onClick={onClose}>Annuler</button>
           {canRebuy && <button className="btn" disabled={busy || !chosen} onClick={() => submit(true)}>Il recave{s.rebuy.price > 0 ? ` (${f.eur(s.rebuy.price)})` : ''}</button>}
           <button className="btn primary" disabled={busy || !chosen} onClick={() => submit(false)}>Valider, {f.ordinal(place)} place</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** Choix du ou des tombeurs (KO partagé), ou de « Personne ». */
+function KillerPicks({ t, victim, others, killers, nobody, onChange }: {
+  t: Tournament; victim: PlayerState; others: PlayerState[]; killers: string[]; nobody: boolean;
+  onChange: (killers: string[], nobody: boolean) => void;
+}) {
+  const s = t.settings;
+  return (
+    <>
+      <div className="picks">
+        {others.map(p => {
+          const on = killers.includes(p.entry.id);
+          return (
+            <button key={p.entry.id} type="button" className={`pick ${on ? 'on' : ''}`} aria-pressed={on}
+              onClick={() => onChange(on ? killers.filter(x => x !== p.entry.id) : [...killers, p.entry.id], false)}>
+              {p.entry.name}<small>{p.entry.table_no ? `table ${p.entry.table_no}` : ''}{p.kos > 0 ? `${p.entry.table_no ? ' · ' : ''}${f.kos(p.kos)}` : ''}</small>
+            </button>
+          );
+        })}
+        <button type="button" className={`pick ${nobody ? 'on' : ''}`} aria-pressed={nobody} onClick={() => onChange([], !nobody)}>Personne<small>abandon, pénalité</small></button>
+      </div>
+      <p className="muted">
+        {killers.length > 1 ? `KO partagé entre ${killers.length} joueurs. ` : ''}
+        {s.bounty.mode !== 'none' && victim.head > 0 && killers.length > 0 && (s.bounty.mode === 'progressive'
+          ? `Prime de ${bountyValue(t, victim.head)} : moitié gagnée, moitié ajoutée à la tête ${killers.length > 1 ? 'des tombeurs' : 'du tombeur'}. `
+          : `Prime de ${bountyValue(t, victim.head)}${killers.length > 1 ? ' à partager' : ''}. `)}
+        {!nobody && killers.length === 0 && 'Choisis un joueur, ou plusieurs pour un KO partagé.'}
+      </p>
+    </>
+  );
+}
+
+/**
+ * Change le tombeur d'une élimination déjà saisie. Les joueurs proposés sont
+ * ceux qui étaient en course à ce moment-là ; la place ne change pas, KO et
+ * primes sont recalculés.
+ */
+function KillerModal({ b, r, k, reload, onClose }: TabProps & { r: Replay; k: Knockout; onClose: () => void }) {
+  const { t, entries, knockouts } = b;
+  const [killers, setPicked] = useState(k.killer_ids);
+  const [nobody, setNobody] = useState(k.killer_ids.length === 0);
+  const [run, busy] = useAction();
+  const toast = useToast();
+  const before = useMemo(() => beforeKnockout(participants(t, entries), knockouts, k, t.settings), [t, entries, knockouts, k]);
+  // Annulée entre-temps (autre écran) : plus rien à changer.
+  if (!before || !knockouts.some(x => x.id === k.id)) return null;
+
+  const { victim } = before;
+  const name = victim.entry.name;
+  const place = r.byId.get(victim.entry.id)?.position;
+  const unchanged = killers.length === k.killer_ids.length && killers.every(x => k.killer_ids.includes(x));
+  const names = (ids: string[]) => ids.map(x => r.byId.get(x)?.entry.name).filter(Boolean).join(' et ');
+
+  const save = async () => {
+    const previous = k.killer_ids;
+    const ok = await run(async () => { await setKillers(t, k.id, killers); await reload(); });
+    if (!ok) return;
+    onClose();
+    toast(killers.length ? `KO de ${name} : ${names(killers)}.` : `KO de ${name} : sans tombeur.`, 'ok', {
+      label: 'Annuler',
+      run: () => void run(async () => { await setKillers(t, k.id, previous); await reload(); }, 'Tombeur rétabli.'),
+    });
+  };
+
+  return (
+    <Modal title={`Qui a éliminé ${name} ?`} onClose={onClose} wide>
+      <div className="stack">
+        <p className="muted">
+          {k.rebuy ? 'Élimination suivie d\'une recave' : place ? `${f.ordinal(place)} place${isSng(t.settings) && victim.entry.table_no ? ` de la table ${victim.entry.table_no}` : ''}` : 'Élimination'}{k.level ? `, niveau ${k.level}` : ''}.
+          {' '}{k.rebuy ? 'Les' : 'Sa place ne change pas ; les'} KO et primes sont recalculés. Sont proposés les joueurs encore en course à ce moment-là.
+        </p>
+        <KillerPicks t={t} victim={victim} others={before.killers} killers={killers} nobody={nobody} onChange={(l, n) => { setPicked(l); setNobody(n); }} />
+        <div className="row end">
+          <button className="btn" onClick={onClose}>Annuler</button>
+          <button className="btn primary" disabled={busy || unchanged || (!nobody && killers.length === 0)} onClick={save}>Enregistrer</button>
         </div>
       </div>
     </Modal>

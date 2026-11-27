@@ -193,7 +193,15 @@ it('une saison complète, avec les données exactes que l\'application envoie', 
   await api.insert('club_entries', { tournament_id: t.id, member_id: bob.id, name: 'Bob', status: 'registered' })
     .then(() => { throw new Error('accepté'); }, e => expect(messageOf(e)).toBe('Cet adhérent est déjà inscrit.'));
   await api.remove('club_knockouts', k1.id);
-  await api.insert('club_knockouts', { tournament_id: t.id, victim_id: by('Bob').id, killer_ids: [by('Alice').id], rebuy: false, level: 1 });
+  const [k2] = await api.insert<Knockout>('club_knockouts', { tournament_id: t.id, victim_id: by('Bob').id, killer_ids: [by('Paol').id], rebuy: false, level: 1 });
+  // Changer le tombeur : la ligne se modifie, et toucher le tournoi prévient les écrans connectés.
+  const revOf = async () => Number((await api.select<Tournament>('club_tournaments', { eq: { id: t.id } }))[0].rev);
+  const rev0 = await revOf();
+  await api.update('club_knockouts', k2.id, { killer_ids: [by('Alice').id] });
+  await api.update('club_tournaments', t.id, { rev: rev0 + 1 });
+  expect(await revOf()).toBeGreaterThan(rev0);
+  const [k2b] = await api.select<Knockout>('club_knockouts', { eq: { tournament_id: t.id } });
+  expect([k2b.seq, k2b.killer_ids]).toEqual([k2.seq, [by('Alice').id]]);
   await api.rpc('club_finish', { p_tournament: t.id, p_results: [{ entry_id: by('Alice').id, position: 1, kos: 1, bounty: 10 }, { entry_id: by('Paol').id, position: 2, kos: 0, bounty: 0 }, { entry_id: by('Bob').id, position: 3, kos: 0, bounty: 0 }] });
 
   // Consultation par une adhérente, plusieurs tournois d'un coup
@@ -201,6 +209,7 @@ it('une saison complète, avec les données exactes que l\'application envoie', 
   const seen = await api.select<Entry>('club_entries', { in: ['tournament_id', [t.id, c.id]] });
   expect(seen.map(e => [e.name, e.final_position]).sort()).toEqual([['Alice', 1], ['Bob', 3], ['Paol', 2]]);
   expect((await api.select('club_knockouts', { in: ['tournament_id', [t.id]] })).length).toBe(1);
+  await expect(api.update('club_knockouts', k2.id, { killer_ids: [] })).rejects.toThrow(/gestionnaires/);
 
   // Un visiteur ne voit rien d'un tournoi réservé.
   await api.signOut();
