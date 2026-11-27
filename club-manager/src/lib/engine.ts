@@ -1,6 +1,9 @@
 /**
  * Déroulé d'un tournoi : tout (places, KO, primes) se rejoue depuis le journal
  * des éliminations. Annuler une élimination = retirer une ligne du journal.
+ *
+ * Un MTT a un seul classement. En Sit'N Go, chaque table a le sien : on y est
+ * classé parmi les joueurs de sa table, d'après la table où l'on est assis.
  */
 import type { Entry, Knockout, Settings, Tournament } from './types';
 
@@ -19,6 +22,16 @@ export interface PlayerState {
   killedBy: string[];
 }
 
+/** Joueurs classés ensemble : tout le tournoi (MTT) ou une table (Sit'N Go). */
+export interface Ranking {
+  /** Sit'N Go : numéro de la table ; null pour un MTT ou des joueurs sans place. */
+  table: number | null;
+  total: number;
+  alive: PlayerState[];
+  /** Éliminés, du dernier sorti au premier. */
+  out: PlayerState[];
+}
+
 export interface Replay {
   players: PlayerState[];
   byId: Map<string, PlayerState>;
@@ -28,6 +41,24 @@ export interface Replay {
   total: number;
   /** Primes perdues faute de tombeur (abandon). */
   unclaimed: number;
+  /** Un seul classement pour un MTT, un par table en Sit'N Go. */
+  rankings: Ranking[];
+  rankingOf: (entryId: string) => Ranking;
+  /** Tout est joué : un seul joueur en course, ou un par table en Sit'N Go. */
+  done: boolean;
+}
+
+export const isSng = (s: Pick<Settings, 'format'>) => s.format === 'sng';
+
+/** Le classement dont relève un joueur. */
+export function rankingKey(s: Pick<Settings, 'format'>, e: Pick<Entry, 'table_no'>): number | null {
+  return isSng(s) ? e.table_no : null;
+}
+
+function groupBy<T>(list: T[], key: (x: T) => number | null): Map<number | null, T[]> {
+  const m = new Map<number | null, T[]>();
+  for (const x of list) m.set(key(x), [...(m.get(key(x)) ?? []), x]);
+  return new Map([...m].sort((a, b) => (a[0] ?? 0) - (b[0] ?? 0)));
 }
 
 export function isFinal(t: Pick<Tournament, 'status'>): boolean {
@@ -78,46 +109,80 @@ export function replay(entries: Entry[], knockouts: Knockout[], settings: Settin
 
   const players = [...byId.values()];
   const total = players.length;
-  // Le premier sorti est dernier : une inscription tardive décale donc les places d'elle-même.
-  outOrder.forEach((p, i) => { p.position = total - i; });
+  const rankings: Ranking[] = [];
+  const rankingById = new Map<string, Ranking>();
+  for (const [table, list] of groupBy(players, p => rankingKey(settings, p.entry))) {
+    const mine = new Set(list);
+    const out = outOrder.filter(p => mine.has(p));
+    // Le premier sorti est dernier : une inscription tardive décale donc les places d'elle-même.
+    out.forEach((p, i) => { p.position = list.length - i; });
+    const g: Ranking = { table, total: list.length, alive: list.filter(p => p.alive), out: out.reverse() };
+    rankings.push(g);
+    for (const p of list) rankingById.set(p.entry.id, g);
+  }
   const alive = players.filter(p => p.alive);
   for (const p of players) {
     p.kos = round2(p.kos);
     p.bountyWon = round2(p.bountyWon);
     p.head = round2(p.head);
   }
-  return { players, byId, alive, out: [...outOrder].reverse(), total, unclaimed: round2(unclaimed) };
+  const empty: Ranking = { table: null, total: 0, alive: [], out: [] };
+  return {
+    players, byId, alive, out: [...outOrder].reverse(), total, unclaimed: round2(unclaimed),
+    rankings, rankingOf: id => rankingById.get(id) ?? empty,
+    done: total > 1 && alive.length > 0 && rankings.every(g => g.alive.length <= 1),
+  };
 }
 
 export interface ResultRow { entry_id: string; position: number; kos: number; bounty: number }
 
-/** Classement complet, quand il ne reste qu'un joueur. */
+/** Classement complet, quand il ne reste qu'un joueur (un par table en Sit'N Go). */
 export function finalRows(r: Replay, settings: Settings): ResultRow[] {
-  const rows: ResultRow[] = r.out.map(p => ({ entry_id: p.entry.id, position: p.position!, kos: p.kos, bounty: p.bountyWon }));
-  // S'il reste plusieurs joueurs (arrêt anticipé), ils sont classés ex æquo à la première place.
-  for (const p of r.alive) {
-    // Le vainqueur garde sa propre prime, sauf en points ou lots fixes (elle ne récompense qu'un KO).
-    const b = settings.bounty;
-    const own = b.mode === 'progressive' || (b.mode === 'fixed' && b.unit === 'eur') ? p.head : 0;
-    rows.push({ entry_id: p.entry.id, position: 1, kos: p.kos, bounty: round2(p.bountyWon + (r.alive.length === 1 ? own : 0)) });
+  const rows: ResultRow[] = [];
+  for (const g of r.rankings) {
+    for (const p of g.out) rows.push({ entry_id: p.entry.id, position: p.position!, kos: p.kos, bounty: p.bountyWon });
+    // S'il reste plusieurs joueurs (arrêt anticipé), ils sont classés ex æquo à la première place.
+    for (const p of g.alive) {
+      // Le vainqueur garde sa propre prime, sauf en points ou lots fixes (elle ne récompense qu'un KO).
+      const b = settings.bounty;
+      const own = b.mode === 'progressive' || (b.mode === 'fixed' && b.unit === 'eur') ? p.head : 0;
+      rows.push({ entry_id: p.entry.id, position: 1, kos: p.kos, bounty: round2(p.bountyWon + (g.alive.length === 1 ? own : 0)) });
+    }
   }
   return rows.sort((a, b) => a.position - b.position);
 }
 
-/** Résultat d'un joueur, figé ou provisoire (un joueur en course a au pire la place « joueurs restants »). */
-export interface Outcome { entry: Entry; position: number; kos: number; bounty: number; provisional: boolean }
+/**
+ * Résultat d'un joueur, figé ou provisoire (un joueur en course a au pire la place « joueurs restants »).
+ * field : joueurs classés avec lui (tout le tournoi, ou sa table en Sit'N Go), base des points de championnat.
+ */
+export interface Outcome { entry: Entry; position: number; kos: number; bounty: number; provisional: boolean; field: number; table: number | null }
 
 export function outcomes(t: Pick<Tournament, 'status' | 'settings'>, entries: Entry[], knockouts: Knockout[]): Outcome[] {
   const inPlay = participants(t, entries);
+  const order = (a: Outcome, b: Outcome) => a.position - b.position || (a.table ?? 0) - (b.table ?? 0);
   if (isFinal(t)) {
+    const fields = groupBy(inPlay, e => rankingKey(t.settings, e));
     return inPlay
-      .map(e => ({ entry: e, position: e.final_position!, kos: Number(e.final_kos ?? 0), bounty: Number(e.final_bounty ?? 0), provisional: false }))
-      .sort((a, b) => a.position - b.position || a.entry.name.localeCompare(b.entry.name, 'fr'));
+      .map(e => ({
+        entry: e, position: e.final_position!, kos: Number(e.final_kos ?? 0), bounty: Number(e.final_bounty ?? 0), provisional: false,
+        field: fields.get(rankingKey(t.settings, e))!.length, table: rankingKey(t.settings, e),
+      }))
+      .sort((a, b) => order(a, b) || a.entry.name.localeCompare(b.entry.name, 'fr'));
   }
   const r = replay(inPlay, knockouts, t.settings);
   return r.players
-    .map(p => ({ entry: p.entry, position: p.position ?? Math.max(1, r.alive.length), kos: p.kos, bounty: p.bountyWon, provisional: p.alive }))
-    .sort((a, b) => a.position - b.position || b.kos - a.kos || a.entry.name.localeCompare(b.entry.name, 'fr'));
+    .map(p => {
+      const g = r.rankingOf(p.entry.id);
+      return { entry: p.entry, position: p.position ?? Math.max(1, g.alive.length), kos: p.kos, bounty: p.bountyWon, provisional: p.alive, field: g.total, table: g.table };
+    })
+    .sort((a, b) => order(a, b) || b.kos - a.kos || a.entry.name.localeCompare(b.entry.name, 'fr'));
+}
+
+/** Nombre de joueurs pour estimer la durée : en Sit'N Go, les tables (égales) jouent en même temps. */
+export function durationField(t: Pick<Tournament, 'settings' | 'seats_per_table'>, players: number): number {
+  if (!isSng(t.settings)) return players;
+  return Math.ceil(players / Math.max(1, Math.ceil(players / t.seats_per_table)));
 }
 
 export interface ChipCount { totalChips: number; avgStack: number; avgBB: number | null }
@@ -180,4 +245,40 @@ export function payouts(t: Tournament, inPlay: Entry[]): Payout[] {
   // Le reste des arrondis va au vainqueur : la somme distribuée vaut toujours la cagnotte.
   amounts[0] += pool - amounts.reduce((a, b) => a + b, 0);
   return amounts.map((a, i) => ({ place: i + 1, amount: round2(a), label: '' }));
+}
+
+/** Dotation d'un classement : tout le tournoi (MTT) ou une table, avec sa propre cagnotte (Sit'N Go). */
+export interface PrizeGroup { table: number | null; players: number; list: Payout[] }
+
+/**
+ * Sit'N Go : une dotation par table. Tant que personne n'est assis, les tables
+ * sont estimées comme le ferait le tirage (tables égales).
+ */
+export function prizeGroups(t: Tournament, inPlay: Entry[]): PrizeGroup[] {
+  if (!isSng(t.settings)) return [{ table: null, players: inPlay.length, list: payouts(t, inPlay) }];
+  const seated = inPlay.filter(e => e.table_no !== null);
+  let groups: [number | null, Entry[]][];
+  if (seated.length > 0) groups = [...groupBy(seated, e => e.table_no)];
+  else {
+    const n = Math.max(1, Math.ceil(inPlay.length / t.seats_per_table));
+    groups = Array.from({ length: n }, (_, i) => [null, inPlay.filter((_, j) => j % n === i)]);
+  }
+  return groups.map(([table, list]) => ({ table, players: list.length, list: payouts(t, list) })).filter(g => g.players > 0);
+}
+
+/** Ce que rapporte une place dans son classement. */
+export function prizeFor(groups: PrizeGroup[], o: Pick<Outcome, 'position' | 'table'>): Payout | undefined {
+  const g = groups.length === 1 ? groups[0] : groups.find(x => x.table === o.table);
+  return g?.list.find(p => p.place === o.position);
+}
+
+/** Les tables dont la dotation diffère, pour n'afficher qu'une liste quand toutes rapportent pareil. */
+export function distinctPrizes(groups: PrizeGroup[]): PrizeGroup[] {
+  const seen = new Map<string, PrizeGroup>();
+  for (const g of groups) {
+    if (g.list.length === 0) continue;
+    const key = JSON.stringify(g.list.map(p => [p.amount, p.label]));
+    if (!seen.has(key)) seen.set(key, g);
+  }
+  return [...seen.values()];
 }

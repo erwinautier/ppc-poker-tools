@@ -24,7 +24,8 @@ export function PlayerPage({ id }: { id: string }) {
 
   const games = tournaments.map(t => {
     const list = outcomes(t, all.filter(e => e.tournament_id === t.id), []);
-    return { t, me: list.find(o => o.entry.member_id === id)!, players: list.length };
+    const me = list.find(o => o.entry.member_id === id)!;
+    return { t, me, players: me.field };
   });
   const n = games.length;
   const wins = games.filter(g => g.me.position === 1).length;

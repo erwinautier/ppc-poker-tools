@@ -3,13 +3,14 @@ import { api, isDemo, useClub, useTournament, type TournamentBundle } from '../l
 import * as f from '../lib/format';
 import { go } from '../lib/router';
 import { download, icsOf } from '../lib/ics';
-import type { TournamentStatus } from '../lib/types';
+import { FORMAT_LABEL, HU_SYSTEM_LABEL, type TournamentStatus } from '../lib/types';
 import { Empty, Icon, Modal, Qr, State, useAction, useConfirm, useToast } from '../components/ui';
 import { RegisterButton, StatusTag } from '../components/cards';
 import { Infos } from '../components/t/Infos';
 import { Players } from '../components/t/Players';
 import { Tables } from '../components/t/Tables';
 import { Live } from '../components/t/Live';
+import { HeadsUp } from '../components/t/HeadsUp';
 import { StructureTab } from '../components/t/StructureTab';
 import { Results } from '../components/t/Results';
 
@@ -29,13 +30,14 @@ export function TournamentPage({ id, tab }: { id: string; tab: string }) {
   }
   const b = q.data;
   const { t } = b;
+  const hu = t.settings.format === 'hu';
   const tabs: [string, string][] = [
     ['direct', 'Direct'], ['infos', 'Infos'], ['joueurs', 'Joueurs'], ['tables', 'Tables'], ['structure', 'Structure'], ['resultats', 'Résultats'],
   ];
   const visible = tabs.filter(([k]) =>
     k === 'direct' ? isStaff ? t.status !== 'finished' && t.status !== 'cancelled' : t.status === 'running'
     : k === 'resultats' ? t.status === 'finished' || isStaff
-    : k === 'tables' ? t.status !== 'finished' && t.status !== 'cancelled' && (isStaff || b.entries.some(e => e.table_no !== null))
+    : k === 'tables' ? !hu && t.status !== 'finished' && t.status !== 'cancelled' && (isStaff || b.entries.some(e => e.table_no !== null))
     : true);
   const fallback = t.status === 'running' ? 'direct' : t.status === 'finished' ? 'resultats' : 'infos';
   const current = visible.some(([k]) => k === tab) ? tab : fallback;
@@ -50,6 +52,7 @@ export function TournamentPage({ id, tab }: { id: string; tab: string }) {
           <p>{f.dateTime(t.starts_at)}{t.venue && ` · ${t.venue}`}</p>
           <div className="row" style={{ marginTop: 8 }}>
             <StatusTag status={t.status} />
+            {t.settings.format !== 'mtt' && <span className="tag">{hu ? `Heads-up · ${HU_SYSTEM_LABEL[t.settings.hu.system].toLowerCase()}` : FORMAT_LABEL[t.settings.format]}</span>}
             {b.championship && <a className="tag" href={`#/c/${b.championship.id}`} style={{ textDecoration: 'none' }}>{b.championship.name}{t.settings.coefficient !== 1 && ` · coef. ${f.num(t.settings.coefficient)}`}</a>}
             {t.visibility === 'public' ? <span className="tag">Page publique</span> : isStaff && <span className="tag">Réservé aux adhérents</span>}
           </div>
@@ -67,7 +70,7 @@ export function TournamentPage({ id, tab }: { id: string; tab: string }) {
       {current === 'infos' && <Infos {...props} />}
       {current === 'joueurs' && <Players {...props} />}
       {current === 'tables' && <Tables {...props} />}
-      {current === 'direct' && <Live {...props} />}
+      {current === 'direct' && (hu ? <HeadsUp {...props} /> : <Live {...props} />)}
       {current === 'structure' && <StructureTab {...props} />}
       {current === 'resultats' && <Results key={t.status} {...props} />}
       {/* En direct, l'horloge et les éliminations passent avant la gestion. */}

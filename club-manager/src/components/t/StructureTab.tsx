@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api, useClub, useLoad, useNow } from '../../lib/club';
+import { durationField } from '../../lib/engine';
 import * as f from '../../lib/format';
 import type { Tournament } from '../../lib/types';
 import type { TabProps } from '../../pages/Tournament';
@@ -19,7 +20,7 @@ export function StructureTab({ b, reload }: TabProps) {
   const v = viewOf(t, now);
   const c = useClockCommands(t, v, reload);
   const live = t.status === 'running';
-  const players = Math.max(2, entries.filter(e => e.status === 'registered').length || t.max_players || 16);
+  const players = durationField(t, Math.max(2, entries.filter(e => e.status === 'registered').length || t.max_players || 16));
 
   if (draft) return <Editor t={t} initial={draft} players={players} live={live} reload={reload} onClose={() => setDraft(null)} />;
 

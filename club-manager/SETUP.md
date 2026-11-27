@@ -48,7 +48,17 @@ apparaît alors pour les adhérents. Ensuite, dans l'application :
    code avec la tablette. Le lien n'est montré qu'une fois ; on peut le retirer.
 
 Sans ce script, l'application marche comme avant. Si tu relances `001_club.sql`, relance
-ensuite `002_club_accounts.sql` puis `003_club_bar.sql`.
+ensuite `002_club_accounts.sql`, `003_club_bar.sql` puis `004_club_hu.sql`.
+
+## 2 quater. Jouer des tournois heads-up
+
+Dans l'éditeur SQL, exécute `supabase/004_club_hu.sql` (une fois). Le format **Heads-up**
+(élimination directe ou ronde suisse) s'utilise alors comme les autres : on crée le
+tournoi, on pointe les joueurs, puis l'onglet **Direct** tire les tours et enregistre les
+vainqueurs. Le bilan final doit afficher `table_heads_up = 1` et `fonction_tirage = 1`.
+
+Sans ce script, le reste du Club marche comme avant ; seul un tournoi heads-up affiche
+« Base à mettre à jour ». Si tu relances `001_club.sql`, relance aussi `004_club_hu.sql`.
 
 ## 3. Autoriser le lien « mot de passe oublié »
 

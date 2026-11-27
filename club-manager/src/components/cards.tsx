@@ -1,5 +1,5 @@
 import { api, useClub, useNow } from '../lib/club';
-import { STATUS_LABEL, type Entry, type Tournament } from '../lib/types';
+import { FORMAT_LABEL, STATUS_LABEL, type Entry, type Tournament } from '../lib/types';
 import * as f from '../lib/format';
 import { participants, replay } from '../lib/engine';
 import { Digits, levelTitle, viewOf } from './clockui';
@@ -68,6 +68,7 @@ export function TournamentRow({ t, entries, championship, reload, winner }: {
         <div className="meta">
           <span>{d.toLocaleDateString('fr-FR', { weekday: 'long' })} {f.time(t.starts_at)}</span>
           {t.venue && <span>{t.venue}</span>}
+          {t.settings.format !== 'mtt' && <span>{FORMAT_LABEL[t.settings.format]}</span>}
           {championship && <span>{championship}</span>}
           {entries && t.status !== 'finished' && (
             <span className="tnum">{t.max_players ? `${taken} / ${t.max_players} places` : f.plural(taken, 'inscription')}{waiting > 0 && ` + ${waiting} en attente`}</span>
@@ -93,7 +94,7 @@ export function LiveTicket({ t, entries, knockouts }: { t: Tournament; entries: 
       <div>
         <div className="row" style={{ marginBottom: 6 }}><StatusTag status="running" /><span className="muted">{levelTitle(t.levels, v)}{!v.running && ' · horloge arrêtée'}</span></div>
         <h2>{t.name}</h2>
-        <p className="muted" style={{ marginTop: 4 }}>{f.plural(r.alive.length, 'joueur')} en course sur {r.total}</p>
+        <p className="muted" style={{ marginTop: 4 }}>{t.settings.format === 'hu' ? `Heads-up · ${f.plural(r.total, 'joueur')}` : `${f.plural(r.alive.length, 'joueur')} en course sur ${r.total}`}</p>
       </div>
       <div className="big">
         <Digits text={f.clock(v.remainingMs)} className="time" />

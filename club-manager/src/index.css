@@ -284,6 +284,13 @@ input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--text
 .pick { text-align: left; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: .88rem; font-weight: 600; cursor: pointer; min-height: 48px; line-height: 1.2; }
 .pick small { display: block; color: var(--text-muted); font-weight: 500; font-size: .72rem; margin-top: 2px; }
 .pick.on { border-color: var(--gold); background: var(--gold-bg); }
+/* Heads-up : un match, deux joueurs face à face ; on touche le vainqueur. */
+.duels { display: grid; gap: 8px; }
+.duel { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 8px; }
+.duel .vs { align-self: center; font-size: .68rem; font-weight: 800; letter-spacing: .08em; color: var(--text-muted); }
+.duel .pick { text-align: center; overflow-wrap: anywhere; }
+.duel .pick.lost { opacity: .45; }
+.duel .pick:disabled { cursor: default; }
 .toasts { position: fixed; z-index: 80; inset: auto 16px 84px 16px; display: grid; gap: 8px; justify-items: center; pointer-events: none; }
 @media (min-width: 900px) { .toasts { inset: auto 24px 24px auto; justify-items: end; } }
 .toast { pointer-events: auto; display: flex; gap: 12px; align-items: center; max-width: 460px; background: var(--ppc-ivoire); color: var(--ppc-prune); border-radius: 10px; padding: 11px 15px; font-size: .88rem; font-weight: 600; box-shadow: 0 8px 30px rgba(0, 0, 0, .45); }

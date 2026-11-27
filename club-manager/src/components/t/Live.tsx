@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { api, useClub, useNow, useWakeLock } from '../../lib/club';
 import { levelNumber, withinLevel, type ClockView } from '../../lib/clock';
-import { chipCount, finalRows, participants, payouts, replay, type PlayerState, type Replay } from '../../lib/engine';
-import { placeOne } from '../../lib/seating';
+import { chipCount, distinctPrizes, finalRows, isSng, participants, prizeGroups, replay, type PlayerState, type PrizeGroup, type Replay } from '../../lib/engine';
+import { layoutOf, returnSeat } from '../../lib/seating';
 import * as f from '../../lib/format';
 import { go } from '../../lib/router';
 import type { Entry, Knockout, Tournament } from '../../lib/types';
@@ -26,7 +26,7 @@ export async function undoKnockout(b: TabProps['b'], k: Knockout) {
   const clash = alive.some(x => x.id !== e.id && x.table_no === e.table_no && x.seat_no === e.seat_no);
   const closed = !alive.some(x => x.id !== e.id && x.table_no === e.table_no) && alive.some(x => x.id !== e.id && x.table_no !== null);
   if (clash || closed) {
-    await api.rpc('club_save_seats', { p_tournament: t.id, p_seats: [placeOne(e.id, alive.filter(x => x.id !== e.id), t.seats_per_table)] });
+    await api.rpc('club_save_seats', { p_tournament: t.id, p_seats: [returnSeat(e, alive, layoutOf(t))] });
   }
 }
 
@@ -47,6 +47,8 @@ export function Live({ b, reload }: TabProps) {
   const mine = me ? r.players.find(p => p.entry.member_id === me.id) : undefined;
   const victimState = victim ? r.byId.get(victim) : undefined;
   const bounty = t.settings.bounty.mode !== 'none';
+  const sng = isSng(t.settings);
+  const tables = r.rankings.filter(g => g.table !== null);
 
   if (t.status !== 'running') return <BeforeStart b={b} reload={reload} start={c.toggle} busy={c.busy} />;
 
@@ -60,9 +62,11 @@ export function Live({ b, reload }: TabProps) {
   return (
     <div className="two">
       <div className="stack">
-        {isStaff && r.alive.length === 1 && r.total > 1 && (
+        {isStaff && r.done && (
           <div className="card warn row between">
-            <span><b>{r.alive[0].entry.name} remporte le tournoi !</b></span>
+            {sng && r.rankings.length > 1
+              ? <span><b>Toutes les tables sont terminées</b> : {r.rankings.filter(g => g.alive.length > 0).map(g => `${g.alive[0].entry.name}${g.table ? ` (table ${g.table})` : ''}`).join(', ')}.</span>
+              : <span><b>{r.alive[0].entry.name} remporte le tournoi !</b></span>}
             <button className="btn primary" disabled={busy} onClick={finish}><Icon name="trophy" />Valider le classement</button>
           </div>
         )}
@@ -70,10 +74,11 @@ export function Live({ b, reload }: TabProps) {
           <MiniClock t={t} v={v} />
           {isStaff && <ClockControls c={c} v={v} />}
         </div>
-        {mine && <MyCard t={t} p={mine} aliveCount={r.alive.length} />}
+        {mine && <MyCard t={t} p={mine} aliveCount={r.rankingOf(mine.entry.id).alive.length} sng={sng} />}
         <div className="card">
           <dl className="facts">
             <div><dt>En course</dt><dd>{r.alive.length}<small> / {r.total}</small></dd></div>
+            {sng && tables.length > 1 && <div><dt>Tables en jeu</dt><dd>{tables.filter(g => g.alive.length > 1).length}<small> / {tables.length}</small></dd></div>}
             <div><dt>Tapis moyen</dt><dd>{f.num(chips.avgStack)}{chips.avgBB !== null && v.level?.kind === 'level' && <small> · {f.num(chips.avgBB)} BB</small>}</dd></div>
             <div><dt>Prochaine pause</dt><dd>{v.toBreakMs !== null ? f.duration(Math.ceil(v.toBreakMs / 60_000)) : 'aucune'}</dd></div>
             <div><dt>Durée de jeu</dt><dd>{f.duration(Math.floor(v.totalMs / 60_000))}</dd></div>
@@ -104,7 +109,7 @@ export function Live({ b, reload }: TabProps) {
                 return (
                   <div key={k.id}>
                     <span className="where">{k.rebuy ? '↻' : p?.position ?? ''}</span>
-                    <p>{p?.entry.name ?? 'Joueur retiré'}{k.rebuy && ' (recave)'}<small>{killers ? `par ${killers}` : 'sans tombeur'}{k.level ? `, niveau ${k.level}` : ''}</small></p>
+                    <p>{p?.entry.name ?? 'Joueur retiré'}{k.rebuy && ' (recave)'}<small>{sng && p?.entry.table_no ? `table ${p.entry.table_no}, ` : ''}{killers ? `par ${killers}` : 'sans tombeur'}{k.level ? `, niveau ${k.level}` : ''}</small></p>
                     {isStaff && i === 0 && <button className="btn sm" disabled={busy} onClick={() => undo(k)}><Icon name="undo" size={14} />Annuler</button>}
                     {isStaff && i > 0 && (
                       <button className="iconbtn" disabled={busy} aria-label={`Annuler l'élimination de ${p?.entry.name}`} title="Annuler cette élimination" onClick={async () => {
@@ -117,7 +122,7 @@ export function Live({ b, reload }: TabProps) {
             </div>
           )}
         </div>
-        {isStaff && r.alive.length !== 1 && (
+        {isStaff && !r.done && (
           <button className="btn ghost" onClick={async () => {
             if (await confirm({ title: 'Arrêter le tournoi maintenant ?', text: `Il reste ${f.plural(r.alive.length, 'joueur')}. Tu pourras fixer leur ordre dans l'onglet Résultats.`, ok: 'Saisir le classement' })) go(`#/t/${t.id}/resultats`);
           }}>Arrêter avant la fin</button>
@@ -129,14 +134,15 @@ export function Live({ b, reload }: TabProps) {
   );
 }
 
-function MyCard({ t, p, aliveCount }: { t: Tournament; p: PlayerState; aliveCount: number }) {
+function MyCard({ t, p, aliveCount, sng }: { t: Tournament; p: PlayerState; aliveCount: number; sng: boolean }) {
+  const ofTable = sng && p.entry.table_no ? <small> de ta table</small> : null;
   return (
     <div className="card note">
       <dl className="facts">
         {p.alive
           ? <div><dt>Ta place</dt><dd>{p.entry.table_no ? <>Table {p.entry.table_no}<small> · siège {p.entry.seat_no}</small></> : 'à tirer'}</dd></div>
-          : <div><dt>Ton résultat</dt><dd>{f.ordinal(p.position!)}</dd></div>}
-        {p.alive && <div><dt>Place assurée</dt><dd>{f.ordinal(aliveCount)}</dd></div>}
+          : <div><dt>Ton résultat</dt><dd>{f.ordinal(p.position!)}{ofTable}</dd></div>}
+        {p.alive && <div><dt>Place assurée</dt><dd>{f.ordinal(aliveCount)}{ofTable}</dd></div>}
         <div><dt>Tes KO</dt><dd>{f.num(p.kos)}</dd></div>
         {t.settings.bounty.mode !== 'none' && <div><dt>Tes primes</dt><dd>{bountyValue(t, p.bountyWon)}</dd></div>}
         {t.settings.bounty.mode !== 'none' && p.alive && p.head > 0 && <div><dt>Sur ta tête</dt><dd>{bountyValue(t, p.head)}</dd></div>}
@@ -146,12 +152,26 @@ function MyCard({ t, p, aliveCount }: { t: Tournament; p: PlayerState; aliveCoun
 }
 
 function PrizeCard({ b, inPlay }: { b: TabProps['b']; inPlay: Entry[] }) {
-  const list = payouts(b.t, inPlay);
-  if (list.length === 0) return null;
+  const groups = distinctPrizes(prizeGroups(b.t, inPlay));
+  if (groups.length === 0) return null;
   return (
     <div className="card">
-      <h2>Dotation</h2>
-      <dl className="deflist">{list.map(p => <div key={p.place}><dt>{f.ordinal(p.place)}</dt><dd>{p.label || f.eur(p.amount!)}</dd></div>)}</dl>
+      <h2>Dotation{isSng(b.t.settings) && groups.length === 1 ? ' par table' : ''}</h2>
+      <PrizeLists groups={groups} />
+    </div>
+  );
+}
+
+/** Une liste par dotation différente : une seule pour un MTT ou des tables qui rapportent pareil. */
+export function PrizeLists({ groups }: { groups: PrizeGroup[] }) {
+  return (
+    <div className="stack" style={{ gap: 12 }}>
+      {groups.map((g, i) => (
+        <div key={i}>
+          {groups.length > 1 && <p className="muted" style={{ fontWeight: 700, marginBottom: 4 }}>{g.table ? `Table ${g.table}` : 'Table'} de {g.players} joueurs</p>}
+          <dl className="deflist">{g.list.map(p => <div key={p.place}><dt>{f.ordinal(p.place)}</dt><dd>{p.label || f.eur(p.amount!)}</dd></div>)}</dl>
+        </div>
+      ))}
     </div>
   );
 }
@@ -169,9 +189,10 @@ function Alive({ r, t, v, isStaff, onKo }: { r: Replay; t: Tournament; v: ClockV
       {[...groups.entries()].sort((a, z) => (a[0] ?? 99) - (z[0] ?? 99)).map(([no, list]) => {
         const shown = list.filter(match).sort((a, z) => (a.entry.seat_no ?? 0) - (z.entry.seat_no ?? 0));
         if (shown.length === 0) return null;
+        const done = isSng(t.settings) && list.length === 1 && r.rankingOf(list[0].entry.id).total > 1;
         return (
           <div key={no ?? 'x'} style={{ marginBottom: 10 }}>
-            {groups.size > 1 || no ? <p className="muted" style={{ fontWeight: 700 }}>{no ? `Table ${no}` : 'Sans place'}</p> : null}
+            {groups.size > 1 || no ? <p className="muted" style={{ fontWeight: 700 }}>{no ? `Table ${no}` : 'Sans place'}{done && ' · terminée'}</p> : null}
             <div className="plist">
               {shown.map(p => (
                 <div className="prow" key={p.entry.id}>
@@ -179,7 +200,8 @@ function Alive({ r, t, v, isStaff, onKo }: { r: Replay; t: Tournament; v: ClockV
                   <span className="pname">{p.entry.name}
                     {(p.kos > 0 || (bounty && p.head > 0)) && <small>{[p.kos > 0 && f.kos(p.kos), bounty && p.head > 0 && `prime ${bountyValue(t, p.head)}`].filter(Boolean).join(' · ')}</small>}
                   </span>
-                  {isStaff && r.alive.length > 1 && <button className="btn danger sm" onClick={() => onKo(p.entry.id)} aria-label={`Éliminer ${p.entry.name}`}><Icon name="skull" size={15} />KO</button>}
+                  {done && <span className="tag open"><Icon name="trophy" size={13} />Vainqueur</span>}
+                  {isStaff && r.rankingOf(p.entry.id).alive.length > 1 && <button className="btn danger sm" onClick={() => onKo(p.entry.id)} aria-label={`Éliminer ${p.entry.name}`}><Icon name="skull" size={15} />KO</button>}
                 </div>
               ))}
             </div>
@@ -202,10 +224,12 @@ export function KnockoutModal({ b, r, v, victim, reload, onClose }: TabProps & {
   const s = t.settings;
   const e = victim.entry;
 
-  const others = r.alive.filter(p => p.entry.id !== e.id)
+  const ranking = r.rankingOf(e.id);
+  // Sit'N Go : seuls les joueurs de sa table peuvent l'éliminer.
+  const others = (isSng(s) && e.table_no !== null ? ranking.alive : r.alive).filter(p => p.entry.id !== e.id)
     .sort((a, z) => Number(z.entry.table_no === e.table_no) - Number(a.entry.table_no === e.table_no) || a.entry.name.localeCompare(z.entry.name, 'fr'));
   const canRebuy = s.rebuy.enabled && withinLevel(t.levels, v.index, s.rebuy.untilLevel) && (s.rebuy.max === 0 || e.rebuys < s.rebuy.max);
-  const place = r.alive.length;
+  const place = ranking.alive.length;
   const chosen = nobody || killers.length > 0;
 
   const submit = async (rebuy: boolean) => {
@@ -218,7 +242,7 @@ export function KnockoutModal({ b, r, v, victim, reload, onClose }: TabProps & {
     });
     if (!ok) return;
     onClose();
-    toast(rebuy ? `${e.name} recave.` : `${e.name} termine ${f.ordinal(place)}.`, 'ok', {
+    toast(rebuy ? `${e.name} recave.` : `${e.name} termine ${f.ordinal(place)}${isSng(s) && e.table_no ? ` de la table ${e.table_no}` : ''}.`, 'ok', {
       label: 'Annuler',
       run: () => void run(async () => { await undoKnockout(b, created!); await reload(); }, 'Élimination annulée.'),
     });

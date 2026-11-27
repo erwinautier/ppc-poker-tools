@@ -93,9 +93,21 @@ export interface Championship {
 }
 
 export type BountyMode = 'none' | 'fixed' | 'progressive';
+/**
+ * mtt : tables rééquilibrées puis table finale. sng : chaque table joue jusqu'à son vainqueur, classement par table.
+ * hu : matchs en tête-à-tête, par tours (élimination directe ou ronde suisse).
+ */
+export type GameFormat = 'mtt' | 'sng' | 'hu';
+/** elimination : le perdant sort, nouveau tirage à chaque tour. swiss : personne ne sort, tours en nombre fixé. */
+export type HuSystem = 'elimination' | 'swiss';
 export type BountyUnit = 'pts' | 'eur' | 'lot';
 
 export interface Settings {
+  format: GameFormat;
+  /** MTT : joueurs à la table finale ; 0 = autant qu'aux autres tables. */
+  finalTable: number;
+  /** Heads-up : système, et nombre de tours d'une ronde suisse (0 = selon le nombre de joueurs). */
+  hu: { system: HuSystem; rounds: number };
   /** Coefficient des points de place dans le championnat. */
   coefficient: number;
   buyIn: number;
@@ -201,7 +213,34 @@ export function isLastAdmin(members: Member[], m: Member): boolean {
   return counts(m) && !members.some(x => x.id !== m.id && counts(x));
 }
 
+export const FORMAT_LABEL: Record<GameFormat, string> = {
+  mtt: 'MTT',
+  sng: 'Sit\'N Go',
+  hu: 'Heads-up',
+};
+
+export const HU_SYSTEM_LABEL: Record<HuSystem, string> = {
+  elimination: 'Élimination directe',
+  swiss: 'Ronde suisse',
+};
+
+/** Un match heads-up ; sans adversaire (b nul), le joueur a est exempté du tour. */
+export interface HuMatch {
+  id: string;
+  tournament_id: string;
+  round: number;
+  /** Barrage pour la première place d'une ronde suisse. */
+  playoff: boolean;
+  a: string;
+  b: string | null;
+  winner: string | null;
+  created_at: string;
+}
+
 export const DEFAULT_SETTINGS: Settings = {
+  format: 'mtt',
+  finalTable: 0,
+  hu: { system: 'elimination', rounds: 0 },
   coefficient: 1,
   buyIn: 0,
   fee: 0,
@@ -228,6 +267,7 @@ export function withSettings(s: Partial<Settings> | null | undefined): Settings 
   const d = DEFAULT_SETTINGS;
   return {
     ...d, ...s,
+    hu: { ...d.hu, ...s?.hu },
     rebuy: { ...d.rebuy, ...s?.rebuy },
     addon: { ...d.addon, ...s?.addon },
     bounty: { ...d.bounty, ...s?.bounty },

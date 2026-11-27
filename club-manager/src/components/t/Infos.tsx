@@ -1,9 +1,12 @@
 import { useClub } from '../../lib/club';
-import { participants, payouts } from '../../lib/engine';
+import { distinctPrizes, durationField, isSng, participants, prizeGroups } from '../../lib/engine';
 import { estimateMinutes } from '../../lib/structure';
 import * as f from '../../lib/format';
 import type { TabProps } from '../../pages/Tournament';
 import { ChipDot } from '../ui';
+import { suggestedRounds } from '../../lib/hu';
+import { HU_SYSTEM_LABEL } from '../../lib/types';
+import { PrizeLists } from './Live';
 
 export function bountyText(s: TabProps['b']['t']['settings']): string {
   const { mode, unit, amount } = s.bounty;
@@ -20,8 +23,13 @@ export function Infos({ b }: TabProps) {
   const waiting = entries.filter(e => e.status === 'waitlist');
   const inPlay = participants(t, entries);
   const field = inPlay.length || registered.length;
-  const est = estimateMinutes(t.levels, Math.max(2, field || t.max_players || 16), t.starting_stack);
-  const prizes = payouts(t, inPlay.length ? inPlay : registered);
+  const sng = isSng(t.settings);
+  const players = durationField(t, Math.max(2, field || t.max_players || 16));
+  const est = estimateMinutes(t.levels, players, t.starting_stack);
+  const prizes = distinctPrizes(prizeGroups(t, inPlay.length ? inPlay : registered));
+  const final = t.settings.finalTable || t.seats_per_table;
+  const hu = s.format === 'hu';
+  const huText = `Heads-up, ${HU_SYSTEM_LABEL[s.hu.system].toLowerCase()}${s.hu.system === 'swiss' ? ` en ${f.plural(s.hu.rounds || suggestedRounds(Math.max(2, field || t.max_players || 16)), 'tour', 'tours')}` : ''}`;
   const cost = s.buyIn + s.fee + (s.bounty.mode !== 'none' && s.bounty.unit === 'eur' ? s.bounty.amount : 0);
   const first = t.levels.find(l => l.kind === 'level');
 
@@ -34,19 +42,20 @@ export function Infos({ b }: TabProps) {
           <dl className="deflist">
             <div><dt>Tapis de départ</dt><dd>{f.num(t.starting_stack)} jetons{first ? ` (${f.num(Math.round(t.starting_stack / first.bb))} BB)` : ''}</dd></div>
             {t.structure_name && <div><dt>Structure</dt><dd>{t.structure_name}</dd></div>}
-            {est && <div><dt>Durée probable</dt><dd>{f.duration(est)}{field ? ` à ${field} joueurs` : ''}</dd></div>}
-            <div><dt>Tables</dt><dd>{t.seats_per_table} joueurs au plus</dd></div>
-            <div><dt>Arrivée tardive</dt><dd>{s.lateRegLevel > 0 ? `jusqu'à la fin du niveau ${s.lateRegLevel}` : 'non'}</dd></div>
-            <div><dt>Recaves</dt><dd>{s.rebuy.enabled ? `${s.rebuy.max === 0 ? 'illimitées' : f.plural(s.rebuy.max, 'recave')} jusqu'au niveau ${s.rebuy.untilLevel}, ${f.num(s.rebuy.stack || t.starting_stack)} jetons${s.rebuy.price > 0 ? `, ${f.eur(s.rebuy.price)}` : ''}` : 'non'}</dd></div>
-            {s.addon.enabled && <div><dt>Add-on</dt><dd>{f.num(s.addon.stack)} jetons{s.addon.price > 0 ? `, ${f.eur(s.addon.price)}` : ''}</dd></div>}
-            <div><dt>Primes</dt><dd>{bountyText(s)}</dd></div>
+            <div><dt>Déroulé</dt><dd>{hu ? huText : sng ? 'Sit\'N Go : chacun garde sa table jusqu\'à son élimination, un classement par table' : `MTT : tables rééquilibrées, table finale à ${final} joueurs`}</dd></div>
+            {est && !hu && <div><dt>Durée probable</dt><dd>{f.duration(est)}{field ? ` à ${players} joueurs${sng ? ' par table' : ''}` : ''}</dd></div>}
+            {!hu && <div><dt>Tables</dt><dd>{t.seats_per_table} joueurs au plus</dd></div>}
+            {!hu && <div><dt>Arrivée tardive</dt><dd>{s.lateRegLevel > 0 ? `jusqu'à la fin du niveau ${s.lateRegLevel}` : 'non'}</dd></div>}
+            {!hu && <div><dt>Recaves</dt><dd>{s.rebuy.enabled ? `${s.rebuy.max === 0 ? 'illimitées' : f.plural(s.rebuy.max, 'recave')} jusqu'au niveau ${s.rebuy.untilLevel}, ${f.num(s.rebuy.stack || t.starting_stack)} jetons${s.rebuy.price > 0 ? `, ${f.eur(s.rebuy.price)}` : ''}` : 'non'}</dd></div>}
+            {!hu && s.addon.enabled && <div><dt>Add-on</dt><dd>{f.num(s.addon.stack)} jetons{s.addon.price > 0 ? `, ${f.eur(s.addon.price)}` : ''}</dd></div>}
+            {!hu && <div><dt>Primes</dt><dd>{bountyText(s)}</dd></div>}
             {cost > 0 && <div><dt>Participation</dt><dd>{f.eur(cost)}</dd></div>}
           </dl>
         </div>
         {prizes.length > 0 && (
           <div className="card">
-            <h2>Dotation{t.status !== 'finished' && s.payouts.mode !== 'lots' ? ' (selon les inscriptions)' : ''}</h2>
-            <dl className="deflist">{prizes.map(p => <div key={p.place}><dt>{f.ordinal(p.place)}</dt><dd>{p.label || f.eur(p.amount!)}</dd></div>)}</dl>
+            <h2>Dotation{sng && prizes.length === 1 ? ' par table' : ''}{t.status !== 'finished' && s.payouts.mode !== 'lots' ? ' (selon les inscriptions)' : ''}</h2>
+            <PrizeLists groups={prizes} />
           </div>
         )}
         {t.chips.length > 0 && (

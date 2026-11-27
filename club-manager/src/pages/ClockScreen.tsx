@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { getDA, logoFile, subscribeDA } from '../../../shared/ppc-da.js';
 import { useClub, useNow, useTournament, useWakeLock, type TournamentBundle } from '../lib/club';
-import { chipCount, participants, payouts, replay } from '../lib/engine';
+import { chipCount, distinctPrizes, isSng, participants, prizeGroups, replay } from '../lib/engine';
 import * as f from '../lib/format';
 import { sounds } from '../lib/sound';
 import { Digits, Frise, levelTitle, useClockCommands, useClockSounds, useSound, viewOf } from '../components/clockui';
 import { ChipDot, Empty, Icon, Qr, State } from '../components/ui';
 import { bountyValue } from '../components/t/Live';
+import { huBoard } from '../components/t/HeadsUp';
+import { champion, currentRound, inPlay as huInPlay, roundLabel } from '../lib/hu';
 import { shareUrl } from './Tournament';
 
 export function ClockScreen({ id }: { id: string }) {
@@ -44,7 +46,10 @@ function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: 
 
   const inPlay = useMemo(() => participants(t, entries), [t, entries]);
   const r = useMemo(() => replay(inPlay, knockouts, t.settings), [inPlay, knockouts, t.settings]);
-  const prizes = useMemo(() => payouts(t, inPlay), [t, inPlay]);
+  const sng = isSng(t.settings);
+  // Sit'N Go : la dotation d'une table, quand toutes rapportent pareil.
+  const prizeSets = useMemo(() => distinctPrizes(prizeGroups(t, inPlay)), [t, inPlay]);
+  const prizes = prizeSets.length === 1 ? prizeSets[0].list : [];
   const chips = chipCount(t, inPlay, r.alive.length, v.level?.bb ?? 0);
   const hunters = r.players.filter(p => p.kos > 0).sort((a, z) => z.kos - a.kos || z.bountyWon - a.bountyWon).slice(0, 4);
 
@@ -57,9 +62,10 @@ function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: 
     const p = r.byId.get(last.victim_id);
     if (!p) return;
     const killers = last.killer_ids.map(x => r.byId.get(x)?.entry.name).filter(Boolean).join(' et ');
-    setSplash({ name: p.entry.name, text: `${last.rebuy ? 'recave' : `termine ${f.ordinal(p.position!)}`}${killers ? `, KO par ${killers}` : ''}` });
+    const table = isSng(t.settings) && p.entry.table_no ? ` de la table ${p.entry.table_no}` : '';
+    setSplash({ name: p.entry.name, text: `${last.rebuy ? 'recave' : `termine ${f.ordinal(p.position!)}${table}`}${killers ? `, KO par ${killers}` : ''}` });
     if (prefs.on) sounds.knockout();
-  }, [knockouts, r, prefs.on]);
+  }, [knockouts, r, prefs.on, t.settings]);
   useEffect(() => {
     if (!splash) return;
     const timer = setTimeout(() => setSplash(null), 5000);
@@ -85,7 +91,17 @@ function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: 
   const full = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.(); };
   const isBreak = v.level?.kind === 'break';
   const lastMinute = v.running && !isBreak && v.remainingMs <= 60_000 && !v.overtime;
-  const winner = t.status === 'finished' ? entries.find(e => e.final_position === 1)?.name : r.alive.length === 1 && r.total > 1 ? r.alive[0].entry.name : null;
+  // Heads-up : les joueurs en lice et le tour en cours, d'après les matchs.
+  const hu = t.settings.format === 'hu' ? huBoard(b) : null;
+  const huRound = hu && currentRound(hu);
+  const huChamp = hu && champion(hu);
+  const left = hu ? huInPlay(hu).length : r.alive.length;
+  const total = hu ? hu.players.length : r.total;
+  // Sit'N Go : un vainqueur par table.
+  const winners = t.status === 'finished' ? entries.filter(e => e.final_position === 1).map(e => e.name)
+    : hu ? (huChamp ? [entries.find(e => e.id === huChamp)?.name ?? ''] : [])
+    : r.done ? r.alive.map(p => p.entry.name) : [];
+  const winner = winners.length > 0 ? winners.join(', ') : null;
 
   return (
     <div className={`tv ${isBreak ? 'break' : ''} ${lastMinute ? 'last' : ''} ${idle ? 'idle' : ''}`}>
@@ -104,7 +120,7 @@ function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: 
         <div className="tv-center">
           {winner ? (
             <>
-              <div className="tv-level">Vainqueur</div>
+              <div className="tv-level">{winners.length > 1 ? 'Vainqueurs' : 'Vainqueur'}</div>
               <div className="tv-blinds">{winner}</div>
               <div className="tv-ante">{f.plural(r.total || entries.filter(e => e.final_position !== null).length, 'joueur')}</div>
             </>
@@ -122,7 +138,8 @@ function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: 
         </div>
 
         <div className="tv-side l">
-          <div className="tv-fact"><span>Joueurs</span><b>{r.alive.length} <small>/ {r.total}</small></b></div>
+          {huRound && hu && <div className="tv-fact"><span>Tour</span><b>{huRound.playoff ? 'Barrage' : hu.system === 'swiss' ? `${huRound.n} / ${hu.planned}` : huRound.n}</b>{roundLabel(hu, huRound) && hu.system !== 'swiss' && <small>{roundLabel(hu, huRound)}</small>}</div>}
+          <div className="tv-fact"><span>{hu ? 'En lice' : 'Joueurs'}</span><b>{left} <small>/ {total}</small></b></div>
           <div className="tv-fact"><span>Tapis moyen</span><b>{f.chips(chips.avgStack)}</b>{chips.avgBB !== null && !isBreak && <small>{f.num(chips.avgBB)} BB</small>}</div>
           <div className="tv-fact"><span>Jetons en jeu</span><b>{f.chips(chips.totalChips)}</b></div>
           {v.toBreakMs !== null && <div className="tv-fact"><span>Prochaine pause</span><b>{f.duration(Math.ceil(v.toBreakMs / 60_000))}</b></div>}
@@ -130,7 +147,7 @@ function Screen({ b, reload, isStaff, offline }: { b: TournamentBundle; reload: 
 
         <div className="tv-side r">
           {v.next && !isBreak && <div className="tv-fact next"><span>Niveau suivant</span><b>{f.blinds(v.next)}</b>{v.next.ante > 0 && <small>ante {f.num(v.next.ante)}</small>}</div>}
-          {prizes.length > 0 && <div className="tv-fact"><span>Dotation</span><ul className="tv-list">{prizes.slice(0, 5).map(p => <li key={p.place}><span className="pl">{f.ordinal(p.place)}</span><b>{p.label || f.eur(p.amount!)}</b></li>)}</ul></div>}
+          {prizes.length > 0 && <div className="tv-fact"><span>Dotation{sng ? ' par table' : ''}</span><ul className="tv-list">{prizes.slice(0, 5).map(p => <li key={p.place}><span className="pl">{f.ordinal(p.place)}</span><b>{p.label || f.eur(p.amount!)}</b></li>)}</ul></div>}
           {hunters.length > 0 && <div className="tv-fact"><span>Chasseurs</span><ul className="tv-list">{hunters.map(p => <li key={p.entry.id}><span>{p.entry.name}</span><b style={{ whiteSpace: 'nowrap' }}>{f.num(p.kos)}{t.settings.bounty.mode !== 'none' && p.bountyWon > 0 ? ` · ${bountyValue(t, p.bountyWon)}` : ''}</b></li>)}</ul></div>}
           <div className="tv-fact tv-qr" style={{ display: 'flex', gap: '1.4vmin', alignItems: 'center' }}>
             <Qr text={shareUrl(t.id)} size={96} />

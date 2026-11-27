@@ -13,11 +13,11 @@ export interface Query {
 
 export type TableName =
   | 'club_members' | 'club_join_requests' | 'club_structures' | 'club_championships'
-  | 'club_tournaments' | 'club_entries' | 'club_payments' | 'club_knockouts';
+  | 'club_tournaments' | 'club_entries' | 'club_payments' | 'club_knockouts' | 'club_hu_matches';
 
 export type Rpc =
   | 'club_request_join' | 'club_approve_request' | 'club_register' | 'club_unregister'
-  | 'club_set_clock' | 'club_save_seats' | 'club_finish' | 'club_reopen'
+  | 'club_set_clock' | 'club_save_seats' | 'club_finish' | 'club_reopen' | 'club_hu_round'
   | 'club_account_status' | 'club_accounts' | 'club_pending_count' | 'club_validate_account' | 'club_refuse_account'
   | 'club_bar_load' | 'club_bar_detail' | 'club_bar_report' | 'club_bar_counter' | 'club_bar_take' | 'club_bar_undo'
   | 'club_bar_declare' | 'club_bar_withdraw' | 'club_bar_decide' | 'club_bar_receive' | 'club_bar_adjust'
