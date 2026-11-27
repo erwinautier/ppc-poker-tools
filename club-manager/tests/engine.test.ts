@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readClock, clockOf, play, pause, goTo, back, nudge, levelNumber, withinLevel } from '../src/lib/clock';
 import { generateLevels, niceBlinds, estimateMinutes, PRESETS } from '../src/lib/structure';
-import { autoPercents, chipCount, distinctPrizes, durationField, finalRows, outcomes, payouts, prizeFor, prizeGroups, replay } from '../src/lib/engine';
+import { autoPercents, beforeKnockout, chipCount, distinctPrizes, durationField, finalRows, outcomes, payouts, prizeFor, prizeGroups, replay } from '../src/lib/engine';
 import { placePoints, points, standings, tournamentCells } from '../src/lib/scoring';
 import { advise, breakTable, draw, layoutOf, placeOne, returnSeat, seatsNow, tablesOf, type Layout } from '../src/lib/seating';
 import { accountName, nameScore, waitingAccounts } from '../src/lib/accounts';
@@ -170,6 +170,38 @@ describe('éliminations', () => {
     const list = outcomes(tournament(), four, [ko('a', ['b'])]);
     expect(list.find(o => o.entry.id === 'b')).toMatchObject({ position: 3, provisional: true });
     expect(list.find(o => o.entry.id === 'a')).toMatchObject({ position: 4, provisional: false });
+  });
+});
+
+describe('changer le tombeur d\'une élimination', () => {
+  const four = ['a', 'b', 'c', 'd'].map(id => entry(id));
+  const s = settings({ bounty: { mode: 'progressive', unit: 'eur', amount: 20 } });
+
+  it('tombeurs proposés : les joueurs en course juste avant, sans la victime', () => {
+    const log = [ko('a', ['b']), ko('c', ['b']), ko('b', ['d'])];
+    expect(beforeKnockout(four, log, log[0], s)!.killers.map(p => p.entry.id)).toEqual(['b', 'c', 'd']);
+    expect(beforeKnockout(four, log, log[1], s)!.killers.map(p => p.entry.id)).toEqual(['b', 'd']);
+    // Prime sur la tête de b juste avant sa sortie : 20 + 10 + 10.
+    expect(beforeKnockout(four, log, log[2], s)!.victim).toMatchObject({ alive: true, head: 40 });
+  });
+
+  it('les places ne bougent pas ; KO et primes suivent le nouveau tombeur', () => {
+    const log = [ko('a', ['b']), ko('c', ['b']), ko('b', ['d'])];
+    const fixed = log.map(k => k === log[1] ? { ...k, killer_ids: ['d'] } : k);
+    const was = replay(four, log, s), now = replay(four, fixed, s);
+    for (const id of ['a', 'b', 'c', 'd']) expect(now.byId.get(id)!.position).toBe(was.byId.get(id)!.position);
+    expect(was.byId.get('b')).toMatchObject({ kos: 2, bountyWon: 20 });
+    expect(now.byId.get('b')).toMatchObject({ kos: 1, bountyWon: 10 });
+    // d prend c (10, tête à 30), puis b qui ne porte plus que 30 : 10 + 15.
+    expect(now.byId.get('d')).toMatchObject({ kos: 2, bountyWon: 25, head: 45 });
+    expect(finalRows(now, s).reduce((x, y) => x + y.bounty, 0)).toBe(80);
+  });
+
+  it('Sit\'N Go : seuls les joueurs de la table de la victime ; MTT : sa table d\'abord', () => {
+    const list = [entry('x1', { table_no: 1 }), entry('x2', { table_no: 1 }), entry('x3', { table_no: 1 }), entry('y1', { table_no: 2 }), entry('y2', { table_no: 2 })];
+    const log = [ko('y1', ['y2']), ko('x1', ['x2'])];
+    expect(beforeKnockout(list, log, log[1], settings({ format: 'sng' }))!.killers.map(p => p.entry.id)).toEqual(['x2', 'x3']);
+    expect(beforeKnockout(list, log, log[1], settings())!.killers.map(p => p.entry.id)).toEqual(['x2', 'x3', 'y2']);
   });
 });
 
