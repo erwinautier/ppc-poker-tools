@@ -60,6 +60,17 @@ vainqueurs. Le bilan final doit afficher `table_heads_up = 1` et `fonction_tirag
 Sans ce script, le reste du Club marche comme avant ; seul un tournoi heads-up affiche
 « Base à mettre à jour ». Si tu relances `001_club.sql`, relance aussi `004_club_hu.sql`.
 
+## 2 quinquies. Ouvrir les votes du Carnet de mains
+
+Le Carnet de mains (`/carnet/`) marche sans base : les mains restent sur le téléphone de
+chacun et s'envoient par WhatsApp. Pour que les adhérents puissent aussi soumettre une
+main au vote du club (« Et toi, tu fais quoi ? », réponses à choisir, pas de commentaire),
+exécute `supabase/005_carnet.sql` (une fois). Le bilan final doit afficher
+`tables_carnet = 2` et `fonctions_carnet = 5`.
+
+Sans ce script, l'onglet **Club** du carnet affiche « Base à mettre à jour » ; tout le reste
+marche. Ce script ne modifie rien des précédents : inutile de le relancer après eux.
+
 ## 3. Autoriser le lien « mot de passe oublié »
 
 Dans **Authentication > URL Configuration > Redirect URLs**, ajoute l'adresse
