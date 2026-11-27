@@ -48,7 +48,7 @@ apparaît alors pour les adhérents. Ensuite, dans l'application :
    code avec la tablette. Le lien n'est montré qu'une fois ; on peut le retirer.
 
 Sans ce script, l'application marche comme avant. Si tu relances `001_club.sql`, relance
-ensuite `002_club_accounts.sql`, `003_club_bar.sql` puis `004_club_hu.sql`.
+ensuite `002_club_accounts.sql`, `003_club_bar.sql`, `004_club_hu.sql` puis `006_club_join_page.sql`.
 
 ## 2 quater. Jouer des tournois heads-up
 
@@ -70,6 +70,18 @@ exécute `supabase/005_carnet.sql` (une fois). Le bilan final doit afficher
 
 Sans ce script, l'onglet **Club** du carnet affiche « Base à mettre à jour » ; tout le reste
 marche. Ce script ne modifie rien des précédents : inutile de le relancer après eux.
+
+## 2 sexies. Modifier la page « Rejoindre le club »
+
+Dans l'éditeur SQL, exécute `supabase/006_club_join_page.sql` (une fois). Les
+administrateurs du club trouvent alors le bouton **Modifier la page Rejoindre le club** dans
+la carte « Gestion du club » de la page **Adhérents** (ou le lien **Modifier la page** en haut de
+`/rejoindre`, une fois connectés) : ils y écrivent, ordonnent et suppriment les questions
+fréquentes de la page publique. Le bilan final doit afficher `table_page_rejoindre = 1` et `fonction_enregistrement = 1`.
+
+Sans ce script, la page affiche ses questions par défaut (`rejoindre/faq.json`) et l'écran
+de Le Club les montre sans pouvoir les enregistrer. Si tu relances `001_club.sql`, relance
+aussi `006_club_join_page.sql`.
 
 ## 3. Autoriser le lien « mot de passe oublié »
 

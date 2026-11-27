@@ -6,6 +6,7 @@ import { keyOf as pk, type Api, type AuthUser, type Query, type TableName } from
 import type { BarApi } from './bar';
 import { createDemoBar } from './demoBar';
 import { DEMO_USERS, seedDemo, type DemoDb } from './demoData';
+import { cleanFaq, type FaqItem } from './joinPage';
 import { isLastAdmin, type Entry, type HuMatch, type Knockout, type Member, type Tournament } from './types';
 
 const KEY = 'ppc-club-demo-v5';
@@ -36,6 +37,7 @@ export function createDemoApi(): DemoApi {
     } catch { /* stockage indisponible : démo en mémoire */ }
     memory ??= seedDemo(Date.now());
     memory.club_hu_matches ??= [];
+    memory.club_join_page ??= [];
     save();
     return memory;
   }
@@ -96,6 +98,7 @@ export function createDemoApi(): DemoApi {
         return seesT(db.club_tournaments.find(t => t.id === (row as Entry).tournament_id));
       case 'club_championships': return (row as { visibility: string }).visibility === 'public' || !!me();
       case 'club_payments': return false;
+      case 'club_join_page': return true;
       case 'club_join_requests': return (row as { user_id: string }).user_id === user()?.id;
       // Le comptoir a besoin des noms, et de rien d'autre.
       default: return !!me() || (role() === 'kiosk' && table === 'club_members');
@@ -403,6 +406,13 @@ export function createDemoApi(): DemoApi {
           for (const e of db.club_entries.filter(x => x.tournament_id === a.p_tournament)) Object.assign(e, { final_position: null, final_kos: null, final_bounty: null });
           if (t?.status === 'finished') Object.assign(t, { status: 'running', finished_at: null });
           return done();
+        }
+        case 'club_save_join_faq': {
+          if (me()?.role !== 'admin') throw new Error('Réservé aux administrateurs du club.');
+          if (!Array.isArray(a.p_faq)) throw new Error('Liste de questions attendue.');
+          const faq = cleanFaq(a.p_faq as FaqItem[]);
+          db.club_join_page = [{ id: 1, faq, updated_at: new Date().toISOString(), updated_by: user()?.id ?? null }];
+          return done(faq);
         }
         default: throw new Error(`Fonction inconnue : ${fn}`);
       }

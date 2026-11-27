@@ -13,7 +13,8 @@ export interface Query {
 
 export type TableName =
   | 'club_members' | 'club_join_requests' | 'club_structures' | 'club_championships'
-  | 'club_tournaments' | 'club_entries' | 'club_payments' | 'club_knockouts' | 'club_hu_matches';
+  | 'club_tournaments' | 'club_entries' | 'club_payments' | 'club_knockouts' | 'club_hu_matches'
+  | 'club_join_page';
 
 export type Rpc =
   | 'club_request_join' | 'club_approve_request' | 'club_register' | 'club_unregister'
@@ -22,7 +23,8 @@ export type Rpc =
   | 'club_bar_load' | 'club_bar_detail' | 'club_bar_report' | 'club_bar_counter' | 'club_bar_take' | 'club_bar_undo'
   | 'club_bar_declare' | 'club_bar_withdraw' | 'club_bar_decide' | 'club_bar_receive' | 'club_bar_adjust'
   | 'club_bar_remind' | 'club_bar_seen' | 'club_bar_save_item' | 'club_bar_move_item' | 'club_bar_save_settings'
-  | 'club_bar_kiosks' | 'club_bar_create_kiosk' | 'club_bar_revoke_kiosk';
+  | 'club_bar_kiosks' | 'club_bar_create_kiosk' | 'club_bar_revoke_kiosk'
+  | 'club_save_join_faq';
 
 export interface Api {
   kind: 'cloud' | 'demo';

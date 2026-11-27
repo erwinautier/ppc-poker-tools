@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="fr" translate="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0B2238" />
+  <title>Rejoindre le club · Penthièvre Poker Club</title>
+  <meta name="description" content="Le Penthièvre Poker Club accueille les débutants comme les joueurs confirmés. Un jeu de stratégie qui se partage autour d’une table : apprenez les bases en ligne, puis venez nous rencontrer." />
+  <!-- Aperçu quand le lien est partagé (Facebook, WhatsApp, SMS) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:site_name" content="Penthièvre Poker Club" />
+  <meta property="og:title" content="Rejoindre le Penthièvre Poker Club" />
+  <meta property="og:description" content="Un jeu de stratégie qui se partage autour d’une table. Apprenez les bases en ligne, puis venez nous rencontrer." />
+  <meta property="og:image" content="https://ppc-poker-tools.vercel.app/logo-ppc-nuit.png" />
+  <!-- Page publique À PART de l'accueil (dossier rejoindre/). On y arrive par le bouton
+       « Rejoindre le club » de l'accueil, le lien discret de l'Initiation ou des liens externes
+       (QR codes, réseaux, presse). Les questions fréquentes se modifient dans Le Club.
+       Chemins absolus : les logos (copiés depuis hub/) et la feuille commune sont à la racine du site. -->
+  <link rel="icon" type="image/png" href="/logo-ppc-nuit.png" />
+  <link rel="apple-touch-icon" href="/logo-ppc-nuit.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/shared/ppc-da.css" />
+  <script>
+    /* DA affichée, posée sur <html> avant l'affichage : mêmes règles que l'accueil (hub/index.html). */
+    (function () {
+      var r = document.documentElement, d = null, admin = false;
+      try {
+        var s = localStorage, id = s.getItem('ppc-da-admin'), session = s.getItem('ppc-auth');
+        admin = !!id && !!session && session.indexOf(id) >= 0;
+        d = new URLSearchParams(location.search).get('da');
+        if (d !== 'vice' && d !== 'nuit') d = admin ? s.getItem('ppc-da') : null;
+      } catch (e) {}
+      if (d !== 'vice' && d !== 'nuit') {
+        r.removeAttribute('data-da');
+        d = getComputedStyle(r).getPropertyValue('--ppc-da').trim() || 'nuit';
+      }
+      r.setAttribute('data-da', d);
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    html, body {
+      min-height: 100dvh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    :root[data-da="vice"] .only-nuit,
+    :root[data-da="nuit"] .only-vice { display: none !important; }
+
+    a { color: var(--accent); }
+    [hidden] { display: none !important; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 6px;
+    }
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 32px;
+    }
+
+    /* Réservé aux administrateurs (voir le script) */
+    .page { position: relative; }
+    .admin-edit {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .admin-edit:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── En-tête ─────────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 36px;
+      text-align: center;
+      max-width: 560px;
+    }
+    .logo { width: 120px; height: 120px; display: block; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45)); }
+    .logo-embleme { width: 200px; height: auto; display: block; filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.5)); }
+    .club {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--signature);
+    }
+    .title {
+      font-family: var(--font-title);
+      font-weight: var(--title-weight);
+      text-transform: var(--title-case);
+      font-size: 2.1rem;
+      line-height: 1.05;
+      color: var(--ppc-ivoire);
+      text-shadow: 3px 3px 0 var(--title-pop);
+    }
+    .lead {
+      margin-top: 14px;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .lead strong { color: var(--ppc-or); font-weight: 700; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s, transform 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: var(--on-primary); border: 1px solid var(--primary); }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    .suits {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 440px;
+      margin: 0 0 36px;
+      color: var(--ppc-or);
+      font-size: 1.05rem;
+      letter-spacing: 0.45em;
+    }
+    .suits::before, .suits::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--ppc-or));
+    }
+    .suits::after { transform: scaleX(-1); }
+
+    /* ── Sections ────────────────────────────────────────────────────────── */
+    .section { width: 100%; max-width: 640px; margin-bottom: 44px; }
+    .kicker {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--signature);
+      margin-bottom: 6px;
+    }
+    .section h2 {
+      font-family: var(--font-title);
+      font-weight: var(--title-weight);
+      text-transform: var(--title-case);
+      font-size: 1.3rem;
+      line-height: 1.2;
+      color: var(--ppc-ivoire);
+      margin-bottom: 18px;
+    }
+    .note { font-size: 0.8rem; color: var(--muted); line-height: 1.6; margin-top: 12px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    /* Trois promesses */
+    .points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .point { padding: 18px 16px 20px; }
+    .point-icon {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      border: 2px solid var(--ppc-or);
+      border-radius: 50%;
+      color: var(--ppc-or);
+      font-size: 1.1rem;
+    }
+    .point h3 { font-size: 0.95rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .point p { font-size: 0.8rem; line-height: 1.6; color: var(--muted); }
+
+    /* Étapes */
+    .steps { list-style: none; display: flex; flex-direction: column; gap: 12px; counter-reset: step; }
+    .step {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 14px;
+      padding: 18px 18px 18px 16px;
+    }
+    .step::before {
+      content: counter(step);
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--primary);
+      color: var(--on-primary);
+      font-weight: 800;
+      font-size: 1rem;
+    }
+    .step h3 { font-size: 0.98rem; font-weight: 800; color: var(--text); margin: 9px 0 6px; }
+    .step h3 small { font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-left: 6px; }
+    .step p { font-size: 0.84rem; line-height: 1.6; color: var(--muted); }
+    .step a { font-weight: 700; text-decoration: none; }
+    .step a:hover { text-decoration: underline; }
+
+    /* Prochains rendez-vous (tournois publics de Le Club) */
+    .events { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .event { display: grid; grid-template-columns: 64px 1fr; gap: 16px; padding: 16px 18px 16px 16px; }
+    .event-date {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 72px;
+      border-radius: 10px;
+      background: var(--gold-bg);
+      border: 1px solid color-mix(in srgb, var(--ppc-or) 40%, var(--border));
+      color: var(--ppc-or);
+      text-transform: uppercase;
+    }
+    .event-date .d { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+    .event-date .m { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; margin-top: 4px; }
+    .event h3 { font-size: 1rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .event .when { font-size: 0.82rem; font-weight: 600; color: var(--ppc-or); }
+    .event .where { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+    .event .desc { font-size: 0.8rem; line-height: 1.6; color: var(--muted); margin-top: 8px; white-space: pre-line; }
+    .event .live {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: var(--success-bg);
+      color: var(--success);
+      font-size: 0.68rem;
+      font-weight: 700;
+      vertical-align: 2px;
+    }
+    .event-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
+    .event-links a, .event-links button {
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .event-links a:hover, .event-links button:hover { text-decoration: underline; }
+
+    /* Questions fréquentes */
+    .faq { display: flex; flex-direction: column; gap: 8px; }
+    .faq details { padding: 0 18px; }
+    .faq summary {
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 0;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after {
+      content: '+';
+      flex: none;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--ppc-or);
+      transition: transform 0.15s;
+    }
+    .faq details[open] summary::after { transform: rotate(45deg); }
+    .faq details p { padding: 0 0 16px; font-size: 0.84rem; line-height: 1.65; color: var(--muted); white-space: pre-line; }
+
+    /* Contact */
+    .contact { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    /* Pied de page */
+    .footer {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+    .signature { width: 88px; height: auto; display: block; opacity: 0.9; }
+
+    /* ── Retouches propres à la DA « Bleu nuit & or » (comme l'accueil) ────── */
+    :root[data-da="nuit"] body {
+      background: radial-gradient(120% 60% at 50% 0%, #12304D 0%, var(--bg) 70%) var(--bg);
+    }
+    :root[data-da="nuit"] .title { font-size: 2.3rem; letter-spacing: 0.02em; }
+    :root[data-da="nuit"] .card {
+      border-color: color-mix(in srgb, var(--ppc-or) 22%, var(--border));
+      background: linear-gradient(180deg, var(--surface2), var(--surface));
+    }
+
+    @media (max-width: 600px) {
+      .points { grid-template-columns: 1fr; }
+      .point { display: grid; grid-template-columns: 40px 1fr; gap: 0 14px; }
+      .point-icon { grid-row: span 2; margin: 0; }
+    }
+    @media (max-width: 480px) {
+      .page { padding-top: 28px; }
+      .title, :root[data-da="nuit"] .title { font-size: 1.75rem; }
+      .logo { width: 100px; height: 100px; }
+      .logo-embleme { width: 168px; }
+      .lead { font-size: 0.94rem; }
+      .actions .btn { flex: 1 1 100%; justify-content: center; }
+      .event { grid-template-columns: 54px 1fr; gap: 12px; }
+      .event-date { height: 64px; }
+      .event-date .d { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ppc-stripe" aria-hidden="true"></div>
+  <div class="page">
+
+    <a class="admin-edit" id="admin-edit" href="/club/#/rejoindre" hidden>Modifier la page</a>
+
+    <header class="header">
+      <img src="/logo-ppc.png" alt="Penthièvre Poker Club" class="logo only-vice" />
+      <picture class="only-nuit">
+        <source srcset="/logo-ppc-nuit-embleme.png" media="(prefers-reduced-motion: reduce)" />
+        <img src="/logo-ppc-nuit-embleme.webp" alt="Penthièvre Poker Club" class="logo-embleme" width="464" height="440" />
+      </picture>
+      <div>
+        <p class="club">Penthièvre Poker Club</p>
+        <h1 class="title">Rejoindre le club</h1>
+        <p class="lead">
+          Le poker comme <strong>jeu de stratégie</strong>, autour d’une table <strong>conviviale</strong>.
+          Vous n’avez jamais joué ? Vous êtes au bon endroit : on vous apprend.
+        </p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-primary" href="/initiation/">Apprendre les bases en ligne</a>
+        <a class="btn btn-ghost" href="#dates" id="cta-dates" hidden>Voir les prochaines dates</a>
+      </div>
+    </header>
+
+    <div class="suits" aria-hidden="true">♣♦♥♠</div>
+
+    <section class="section" aria-labelledby="pourquoi">
+      <p class="kicker">Le club</p>
+      <h2 id="pourquoi">Un club pour jouer, apprendre et se retrouver</h2>
+      <div class="points">
+        <div class="card point">
+          <div class="point-icon" aria-hidden="true">♣</div>
+          <h3>Un jeu de stratégie</h3>
+          <p>Lire ses adversaires, calculer, décider : on progresse vite, et on s’amuse en chemin.</p>
+        </div>
+        <div class="card point">
+          <div class="point-icon" aria-hidden="true">♦</div>
+          <h3>Débutants bienvenus</h3>
+          <p>L’Initiation en ligne vous donne les bases, et les joueurs du club répondent volontiers à vos questions.</p>
+        </div>
+        <div class="card point">
+          <div class="point-icon" aria-hidden="true">♥</div>
+          <h3>Un vrai championnat</h3>
+          <p>Tournois réguliers, horloge en direct, classements : toute la saison se suit en ligne.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="comment">
+      <p class="kicker">En trois étapes</p>
+      <h2 id="comment">Comment nous rejoindre</h2>
+      <ol class="steps">
+        <li class="card step">
+          <div>
+            <h3>Apprenez les bases chez vous <small>facultatif</small></h3>
+            <p>L’Initiation du club : 20 leçons interactives, sans créer de compte. Des règles jusqu’à vos premiers tournois. <a href="/initiation/">Commencer l’Initiation →</a></p>
+          </div>
+        </li>
+        <li class="card step">
+          <div>
+            <h3>Venez nous rencontrer</h3>
+            <p>Seul ou accompagné, passez nous voir un soir de tournoi : on vous présente le club et on répond à vos questions.</p>
+          </div>
+        </li>
+        <li class="card step">
+          <div>
+            <h3>Adhérez au club</h3>
+            <p>Votre compte dans Le Club vous permet ensuite de vous inscrire aux tournois et de suivre le championnat.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Visible seulement s'il y a des tournois publics à venir dans Le Club. -->
+    <section class="section" id="dates" aria-labelledby="dates-titre" hidden>
+      <p class="kicker">Ouverts à tous</p>
+      <h2 id="dates-titre">Prochains rendez-vous</h2>
+      <div id="events"></div>
+    </section>
+
+    <!-- Questions modifiables par les administrateurs dans Le Club (Adhérents → « Modifier la page Rejoindre le club ») ;
+         sinon celles de faq.json, à côté de cette page. -->
+    <section class="section" id="faq-section" aria-labelledby="faq" hidden>
+      <p class="kicker">Vos questions</p>
+      <h2 id="faq">Questions fréquentes</h2>
+      <div class="faq" id="faq-list"></div>
+    </section>
+
+    <section class="section" id="contact" aria-labelledby="contact-titre" hidden>
+      <p class="kicker">Une question ?</p>
+      <h2 id="contact-titre">Nous contacter</h2>
+      <div class="contact" id="contact-links"></div>
+    </section>
+
+    <footer class="footer">
+      <img src="/logo-ppc-nuit-lunettes.png" alt="" class="signature only-nuit" loading="lazy" />
+      <p>Penthièvre Poker Club</p>
+    </footer>
+
+  </div>
+  <div class="ppc-stripe" aria-hidden="true"></div>
+
+  <script type="module">
+    /*
+     * Coordonnées du club, affichées dans « Nous contacter ». Laisser une valeur vide la masque ;
+     * tout vide, la section n'apparaît pas. Pas d'adresse personnelle ici : le dépôt est public.
+     */
+    const CONTACT = {
+      email: '',      // ex. 'contact@exemple.fr'
+      facebook: '',   // adresse complète de la page
+      instagram: '',  // adresse complète du compte
+    };
+
+    // Même projet Supabase que les apps de la suite (la clé « anon » est publique).
+    const SUPABASE_URL = 'https://kbkxzvsgusakjgmnbbmx.supabase.co';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtia3h6dnNndXNha2pnbW5iYm14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzI2ODgsImV4cCI6MjA5Njc0ODY4OH0.Wwp7pgRNQVi1bQ94Fogk_GwYbfNratRpus4pUjzkzAo';
+
+    const TZ = 'Europe/Paris';
+    const DEMO = new URLSearchParams(location.search).has('demo');
+    const HEADERS = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
+
+    function el(tag, cls, text) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+    function link(text, href) {
+      const a = el('a', null, text);
+      a.href = href;
+      return a;
+    }
+
+    /* ── Prochains rendez-vous ───────────────────────────────────────────────
+     * Les tournois PUBLICS à venir de Le Club (hors brouillons, annulés et terminés) ;
+     * sans compte, la base ne renvoie que ceux-là. Aucun : la section reste cachée.
+     * ?demo dans l'adresse montre deux dates d'exemple, sans rien lire en ligne.
+     */
+    async function upcoming() {
+      if (DEMO) return demoEvents();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const q = new URLSearchParams({
+        select: 'id,name,description,venue,starts_at,status',
+        visibility: 'eq.public',
+        status: 'in.(open,closed,running)',
+        starts_at: `gte.${today.toISOString()}`,
+        order: 'starts_at.asc',
+        limit: '6',
+      });
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/club_tournaments?${q}`, { headers: HEADERS });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const rows = await r.json();
+      if (!Array.isArray(rows)) throw new Error('réponse inattendue');
+      return rows;
+    }
+
+    function demoEvents() {
+      const at = (days, h, m) => {
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        d.setHours(h, m, 0, 0);
+        return d.toISOString();
+      };
+      return [
+        { id: 'demo-1', name: 'Tournoi ouvert à tous', venue: 'Salle du club', status: 'open', starts_at: at(12, 20, 30),
+          description: 'Tous niveaux.\nInscription sur place.' },
+        { id: 'demo-2', name: 'Tournoi ouvert à tous', venue: 'Salle du club', status: 'open', starts_at: at(40, 20, 30), description: '' },
+      ];
+    }
+
+    const fmt = (opts) => new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, ...opts });
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    function eventCard(t) {
+      const d = new Date(t.starts_at);
+      const li = el('li', 'card event');
+
+      const badge = el('div', 'event-date');
+      badge.setAttribute('aria-hidden', 'true');
+      badge.append(el('span', 'd', fmt({ day: 'numeric' }).format(d)), el('span', 'm', fmt({ month: 'short' }).format(d).replace('.', '')));
+
+      const body = el('div');
+      const h = el('h3', null, t.name);
+      if (t.status === 'running') h.append(el('span', 'live', 'en cours'));
+      const day = cap(fmt({ weekday: 'long', day: 'numeric', month: 'long' }).format(d));
+      const hour = fmt({ hour: '2-digit', minute: '2-digit' }).format(d).replace(':', ' h ');
+      body.append(h, el('p', 'when', `${day} · ${hour}`));
+      if (t.venue) body.append(el('p', 'where', t.venue));
+      if (t.description) body.append(el('p', 'desc', t.description));
+
+      const links = el('div', 'event-links');
+      if (!String(t.id).startsWith('demo-')) links.append(link('Détails dans Le Club →', `/club/#/t/${encodeURIComponent(t.id)}`));
+      const cal = el('button', null, 'Ajouter à mon agenda');
+      cal.type = 'button';
+      cal.addEventListener('click', () => downloadIcs(t));
+      links.append(cal);
+      body.append(links);
+
+      li.append(badge, body);
+      return li;
+    }
+
+    // Fichier d'agenda (.ics), comme celui de Le Club : quatre heures à partir du début.
+    function downloadIcs(t) {
+      const esc = (s) => String(s).replace(/([\;,])/g, '\\$1').replace(/\r?\n/g, '\\n');
+      const stamp = (x) => x.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+      const start = new Date(t.starts_at), end = new Date(start.getTime() + 4 * 3_600_000);
+      const url = String(t.id).startsWith('demo-') ? location.href : `${location.origin}/club/#/t/${t.id}`;
+      const ics = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PPC//Rejoindre le club//FR', 'BEGIN:VEVENT',
+        `UID:${t.id}@ppc-club`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`,
+        `SUMMARY:${esc(`Poker : ${t.name}`)}`, `LOCATION:${esc(t.venue || '')}`,
+        `DESCRIPTION:${esc([t.description, url].filter(Boolean).join('\n'))}`,
+        'END:VEVENT', 'END:VCALENDAR',
+      ].join('\r\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+      const slug = t.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-+|-+$/g, '');
+      a.download = `ppc-${slug.toLowerCase() || 'rendez-vous'}.ics`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    async function showEvents() {
+      let rows;
+      try { rows = await upcoming(); } catch { return; }   // hors ligne : pas de section
+      if (!rows.length) return;
+      const ul = el('ul', 'events');
+      rows.forEach(t => ul.append(eventCard(t)));
+      document.getElementById('events').replaceChildren(ul);
+      document.getElementById('dates').hidden = false;
+      document.getElementById('cta-dates').hidden = false;
+    }
+
+    /* ── Questions fréquentes ────────────────────────────────────────────────
+     * Celles qu'un administrateur a enregistrées dans Le Club (table club_join_page,
+     * script 006) ; tant qu'il n'y en a pas, celles de faq.json, à côté de cette page.
+     * Une liste enregistrée vide cache la section.
+     */
+    async function savedFaq() {
+      if (DEMO) return null;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/club_join_page?select=faq&id=eq.1`, { headers: HEADERS });
+      if (!r.ok) return null;              // script 006 pas encore exécuté
+      const [row] = await r.json();
+      return row && Array.isArray(row.faq) ? row.faq : null;
+    }
+
+    async function showFaq() {
+      let list = null;
+      try { list = await savedFaq(); } catch { /* base injoignable : questions par défaut */ }
+      if (!list) {
+        try {
+          const r = await fetch('/rejoindre/faq.json');
+          list = r.ok ? await r.json() : [];
+        } catch { list = []; }
+      }
+      const items = (Array.isArray(list) ? list : []).filter(x => x && typeof x.q === 'string' && typeof x.a === 'string' && x.q.trim());
+      if (!items.length) return;
+      document.getElementById('faq-list').replaceChildren(...items.map(({ q, a }) => {
+        const d = el('details', 'card');
+        d.append(el('summary', null, q), el('p', null, a));
+        return d;
+      }));
+      document.getElementById('faq-section').hidden = false;
+    }
+
+    /* ── « Modifier la page », pour les administrateurs ──────────────────────
+     * Même repère que l'accueil : ppc-da-admin, posé par les apps quand un administrateur
+     * se connecte. Simple confort d'affichage : seule la base décide qui enregistre.
+     */
+    try {
+      const id = localStorage.getItem('ppc-da-admin'), session = localStorage.getItem('ppc-auth');
+      if (id && session && session.includes(id)) document.getElementById('admin-edit').hidden = false;
+    } catch { /* stockage indisponible */ }
+
+    void showEvents();
+    void showFaq();
+
+    /* ── Contact ─────────────────────────────────────────────────────────── */
+    const contacts = [
+      CONTACT.email && ['Écrire au club', `mailto:${CONTACT.email}`],
+      CONTACT.facebook && ['Facebook', CONTACT.facebook],
+      CONTACT.instagram && ['Instagram', CONTACT.instagram],
+    ].filter(Boolean);
+    if (contacts.length) {
+      const wrap = document.getElementById('contact-links');
+      contacts.forEach(([text, href], i) => {
+        const a = link(text, href);
+        a.className = i === 0 ? 'btn btn-primary' : 'btn btn-ghost';
+        if (!href.startsWith('mailto:')) { a.target = '_blank'; a.rel = 'noopener'; }
+        wrap.append(a);
+      });
+      document.getElementById('contact').hidden = false;
+    }
+  </script>
+</body>
+</html>

@@ -21,6 +21,7 @@ import { StructureEdit } from './pages/StructureEdit';
 import { Members } from './pages/Members';
 import { PlayerPage } from './pages/Player';
 import { Account, NewPassword } from './pages/Account';
+import { JoinPageEdit } from './pages/JoinPage';
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ function Shell() {
 
   function page() {
     const staffOnly = (node: React.ReactNode) => club.isStaff ? node : <Forbidden />;
+    const adminOnly = (node: React.ReactNode) => club.isAdmin ? node : <Forbidden who="administrateurs" />;
     switch (a) {
       case '': return <Home />;
       case 'tournois': return b === 'nouveau' ? staffOnly(<TournamentEdit key="new" />) : <Tournaments />;
@@ -66,6 +68,8 @@ function Shell() {
       case 'c': return c === 'modifier' ? staffOnly(<ChampionshipEdit key={b} id={b} />) : <ChampionshipPage key={b} id={b} tab={c} />;
       case 'structures': return b ? staffOnly(<StructureEdit key={b} id={b === 'nouveau' ? undefined : b} />) : staffOnly(<Structures />);
       case 'adherents': return staffOnly(<Members />);
+      // Ouverte depuis Adhérents (« Gestion du club ») ou le lien « Modifier la page » de /rejoindre.
+      case 'rejoindre': return adminOnly(<JoinPageEdit />);
       case 'buvette': return <BarPage tab={b} />;
       case 'j': return <PlayerPage key={b} id={b} />;
       case 'compte': return <Account />;
@@ -74,10 +78,10 @@ function Shell() {
   }
 }
 
-function Forbidden() {
+function Forbidden({ who = 'gestionnaires' }: { who?: string }) {
   return (
     <div className="empty">
-      <b>Page réservée aux gestionnaires</b>
+      <b>Page réservée aux {who}</b>
       <a className="btn" href="#/">Retour à l'accueil</a>
     </div>
   );
