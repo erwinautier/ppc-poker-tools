@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Lesson } from '../content/types';
-import { LESSONS, MODULES } from '../content';
+import { lessonLabel, moduleOf, parcoursOf } from '../content';
 import { termsOfLesson } from '../content/lexique';
 import { type ItemResult, type Phase, PASS_THRESHOLD, PHASES, PHASE_LABEL, isValidated, lessonProgress, updateLesson, useStore } from '../lib/progress';
 import { go } from '../lib/router';
@@ -21,8 +21,9 @@ export function LessonView({ lesson, phase }: { lesson: Lesson; phase?: Phase })
     if (current === 'bilan' && !p.bilanSeen) updateLesson(lesson.id, { bilanSeen: true });
   }, [lesson.id, current, p.lastPhase, p.bilanSeen]);
 
-  const mod = MODULES.find(m => m.id === lesson.module)!;
-  const total = LESSONS.length;
+  const mod = moduleOf(lesson);
+  const def = parcoursOf(lesson);
+  const total = def.lessons.length;
   const setPhase = (ph: Phase) => {
     if (ph !== 'defi' && !p.defiDone) { setLockMsg(true); return; }
     setLockMsg(false);
@@ -32,9 +33,9 @@ export function LessonView({ lesson, phase }: { lesson: Lesson; phase?: Phase })
   return (
     <div>
       <div className="header">
-        <button className="icon-btn" onClick={() => go({ name: 'parcours' })} aria-label="Retour au parcours">←</button>
+        <button className="icon-btn" onClick={() => go({ name: 'parcours', p: def.id })} aria-label="Retour au parcours">←</button>
         <div className="grow">
-          <div className="lesson-kicker">Leçon {lesson.id} / {total}{lesson.bonus ? ' · bonus' : ''} · {mod.title}</div>
+          <div className="lesson-kicker">{def.id === 'exploration' ? 'Exploration · ' : ''}Leçon {lessonLabel(lesson)}{def.id === 'exploration' ? '' : ` / ${total}`}{lesson.bonus ? ' · bonus' : ''} · {mod.title}</div>
           <h1 className="lesson-title">{lesson.title}</h1>
         </div>
         {isValidated(p) && <span className="pill ok">✓ {Math.round((p.best ?? 0) * 100)} %</span>}
@@ -223,9 +224,10 @@ function TrainingPhase({ lesson }: { lesson: Lesson }) {
 
 function FichePhase({ lesson }: { lesson: Lesson }) {
   const [busy, setBusy] = useState(false);
-  const mod = MODULES.find(m => m.id === lesson.module)!;
-  const idx = LESSONS.findIndex(l => l.id === lesson.id);
-  const next = LESSONS[idx + 1];
+  const mod = moduleOf(lesson);
+  const def = parcoursOf(lesson);
+  const idx = def.lessons.findIndex(l => l.id === lesson.id);
+  const next = def.lessons[idx + 1];
   const p = lessonProgress(lesson.id);
   return (
     <div className="stack">
@@ -238,8 +240,8 @@ function FichePhase({ lesson }: { lesson: Lesson }) {
       <div className="row between wrap">
         <button className="btn ghost" onClick={() => go({ name: 'lecon', id: lesson.id, phase: 'entrainement' })}>↻ Entraînement</button>
         {next
-          ? <button className="btn" onClick={() => go({ name: 'lecon', id: next.id })}>Leçon {next.id} : {next.title} →</button>
-          : <button className="btn" onClick={() => go({ name: 'parcours' })}>Retour au parcours</button>}
+          ? <button className="btn" onClick={() => go({ name: 'lecon', id: next.id })}>Leçon {lessonLabel(next)} : {next.title} →</button>
+          : <button className="btn" onClick={() => go({ name: 'parcours', p: def.id })}>Retour au parcours</button>}
       </div>
     </div>
   );

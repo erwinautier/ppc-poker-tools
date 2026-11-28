@@ -3,7 +3,7 @@ import type { ChoiceItem, EstimateItem, Item, Lesson, MatchItem } from '../types
 import { CardRow } from '../../components/Cards';
 import { T } from '../../components/Term';
 import { Narr, sample, trueFalse, withIds } from '../helpers';
-import { TERMS, type Term } from '../lexique';
+import { INIT_TERMS as TERMS, type Term } from '../lexique';
 import { cards, draw, suitOf } from '../../lib/cards';
 import { equityRun, share } from '../../lib/sims';
 

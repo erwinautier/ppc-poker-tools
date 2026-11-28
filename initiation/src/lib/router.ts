@@ -1,15 +1,19 @@
 /** Routage par ancre (#/lecon/5/bilan) : le bouton « retour » du navigateur fonctionne. */
 import { useEffect, useState } from 'react';
 import type { Phase } from './progress';
+import type { ParcoursId } from '../content/types';
 
 export type Route =
-  | { name: 'parcours' }
+  /** p absent : le dernier parcours ouvert. */
+  | { name: 'parcours'; p?: ParcoursId }
   | { name: 'lexique' }
   | { name: 'fiches' }
   | { name: 'lecon'; id: number; phase?: Phase };
 
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  if (parts[0] === 'exploration') return { name: 'parcours', p: 'exploration' };
+  if (parts[0] === 'initiation') return { name: 'parcours', p: 'initiation' };
   if (parts[0] === 'lexique') return { name: 'lexique' };
   if (parts[0] === 'fiches') return { name: 'fiches' };
   if (parts[0] === 'lecon' && parts[1]) {
@@ -22,7 +26,7 @@ export function parse(hash: string): Route {
 
 export function href(r: Route): string {
   switch (r.name) {
-    case 'parcours': return '#/';
+    case 'parcours': return r.p ? `#/${r.p}` : '#/';
     case 'lexique': return '#/lexique';
     case 'fiches': return '#/fiches';
     case 'lecon': return `#/lecon/${r.id}${r.phase ? '/' + r.phase : ''}`;
