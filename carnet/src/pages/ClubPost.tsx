@@ -1,16 +1,17 @@
 /** Une main au vote : on répond avant de voir la suite ; ensuite les totaux et la fin de la main. */
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Replayer } from '../components/Replayer';
 import { SharePanel } from '../components/SharePanel';
 import { Chips, Icon, useAction, useConfirm } from '../components/ui';
-import { club, messageOf, type Feed, type Post } from '../lib/club';
+import { club, messageOf, type Feed, type MyVote, type Post } from '../lib/club';
+import { STREETS } from '../lib/engine';
 import { bbs, dateLabel, pct } from '../lib/format';
-import { TAGS, ctxText, decisionState, heroLine, replayOf } from '../lib/hand';
+import { TAGS, ctxText, heroLine } from '../lib/hand';
 import { go } from '../lib/router';
 import { useUser } from '../lib/session';
 import { clubLink } from '../lib/share';
 import { getCarnet, saveHand } from '../lib/store';
-import { MAX_REASONS, REASONS, matchOption, optionLabel, type VoteOption } from '../lib/vote';
+import { MAX_REASONS, REASONS, optionLabel, questionsOf, type Question, type Results as ResultsData, type VoteOption } from '../lib/vote';
 
 /** Les réponses, en grands boutons ; un montant est aussi donné en grosses blindes. */
 export function Answers({ options, bb, value, onChange }: { options: VoteOption[]; bb: number; value: number | null; onChange: (i: number) => void }) {
@@ -83,50 +84,46 @@ function PostBody({ post, staff, reload }: { post: Post; staff: boolean; reload:
   const [run, busy] = useAction();
   const confirm = useConfirm();
   const h = post.hand;
-  const bb = h.ctx.blinds.bb;
-  const r = replayOf(h);
-  const decision = decisionState(h, r);
-  const [choice, setChoice] = useState<number | null>(post.my_vote);
-  const [reasons, setReasons] = useState<number[]>(post.my_reasons);
-  const [changing, setChanging] = useState(false);
-  const voted = post.my_vote !== null;
-  const asking = !post.mine && (!voted || changing);
-  const did = decision ? matchOption(post.options, decision, h.actions[h.decision!]) : -1;
+  const qs = useMemo(() => questionsOf(h, post.steps), [h, post.steps]);
+  /** Question dont on change la réponse. */
+  const [changing, setChanging] = useState<number | null>(null);
+  // On répond dans l'ordre : la première question sans réponse est la question en cours.
+  const open = post.mine ? -1 : changing ?? qs.findIndex(q => !post.my_votes[q.step]);
+  const q = open >= 0 ? qs[open] : undefined;
   const tags = h.tags.filter(t => (TAGS as readonly string[]).includes(t));
-  const panel = asking ? (
-    <section className="card stack sm question">
-      <h2>Ta réponse</h2>
-      <Answers options={post.options} bb={bb} value={choice} onChange={setChoice} />
-      <span className="field-label">Pourquoi ? (facultatif, deux au plus)</span>
-      <Chips label="Raisons" multi value={reasons}
-        onChange={x => setReasons(l => (l.includes(x) ? l.filter(y => y !== x) : l.length >= MAX_REASONS ? l : [...l, x]))}
-        items={REASONS.map((t, i) => ({ value: i, label: t, disabled: !reasons.includes(i) && reasons.length >= MAX_REASONS }))} />
-      <button className="btn primary big block" disabled={choice === null || busy} onClick={() => run(async () => {
-        await club.vote(post.id, choice!, reasons);
-        setChanging(false);
-        await reload();
-      }, voted ? 'Vote changé' : 'Vote enregistré')}>{voted ? 'Changer mon vote' : 'Voter et voir la suite'}</button>
-      <p className="muted">Les votes sont anonymes : seuls les totaux sont montrés.</p>
-    </section>
-  ) : (
-    <section className="card stack sm">
-      <div className="row between">
-        <h2>Les réponses du club</h2>
-        <span className="muted">{post.votes} vote{post.votes > 1 ? 's' : ''}</span>
-      </div>
-      {post.results ? <Results post={post} did={did} /> : <p className="muted">Les résultats s'affichent après ton vote.</p>}
-      {voted && <button className="btn sm" onClick={() => setChanging(true)}><Icon name="edit" size={15} />Changer mon vote</button>}
-    </section>
+  const many = qs.length > 1;
+
+  const panel = (
+    <>
+      {qs.map((x, k) => (k === open ? (
+        <Ballot key={`q${x.step}`} q={x} count={qs.length} bb={h.ctx.blinds.bb} mine={post.my_votes[x.step]} busy={busy}
+          onVote={(choice, reasons) => run(async () => {
+            await club.vote(post.id, x.step, choice, reasons);
+            setChanging(null);
+            await reload();
+          }, post.my_votes[x.step] ? 'Vote changé' : 'Vote enregistré')}
+          onCancel={changing !== null ? () => setChanging(null) : undefined} />
+      ) : open < 0 || k < open ? (
+        <section key={`r${x.step}`} className="card stack sm">
+          <div className="row between">
+            <h2>{many ? `Question ${k + 1} · ${STREETS[x.state.street]}` : 'Les réponses du club'}</h2>
+            <span className="muted">{(post.results[x.step]?.total ?? post.votes)} vote{(post.results[x.step]?.total ?? post.votes) > 1 ? 's' : ''}</span>
+          </div>
+          {post.results[x.step] ? <Results q={x} res={post.results[x.step]!} mine={post.my_votes[x.step]} /> : <p className="muted">Les résultats s'affichent après ton vote.</p>}
+          {post.my_votes[x.step] && changing === null && <button className="btn sm" onClick={() => setChanging(k)}><Icon name="edit" size={15} />Changer mon vote</button>}
+        </section>
+      ) : null))}
+    </>
   );
 
   return (
     <>
       <p className="muted">{post.author_name ? `Proposée par ${post.author_name}` : 'Proposée par un membre du club'} · {dateLabel(Date.parse(post.created_at))} · {ctxText(h.ctx)}</p>
-      <p><b>{heroLine(h)}</b>{tags.length ? <> · {tags.join(', ')}</> : null}</p>
+      <p><b>{heroLine(h)}</b>{tags.length ? <> · {tags.join(', ')}</> : null}{many ? <> · {qs.length} questions</> : null}</p>
       {post.hidden && <p className="note">Main retirée par l'équipe du club : seuls son auteur et l'équipe la voient.</p>}
-      <Replayer key={asking ? 'q' : 'a'} hand={h} limit={asking && decision ? h.decision! : undefined} startAt={asking ? 'end' : 'start'} footer={panel} />
+      <Replayer hand={h} limit={q?.index} startAt={q ? 'end' : 'start'} footer={panel} />
 
-      {!asking && <SharePanel hand={h} link={clubLink(post.id)} title="Inviter à voter" />}
+      {!q && <SharePanel hand={h} link={clubLink(post.id)} title="Inviter à voter" />}
 
       {(post.mine || staff) && (
         <div className="row">
@@ -150,12 +147,37 @@ function PostBody({ post, staff, reload }: { post: Post; staff: boolean; reload:
   );
 }
 
-function Results({ post, did }: { post: Post; did: number }) {
-  const res = post.results!;
+/** Le bulletin d'une question : une réponse, deux raisons au plus. */
+function Ballot({ q, count, bb, mine, busy, onVote, onCancel }: {
+  q: Question; count: number; bb: number; mine: MyVote | null; busy: boolean;
+  onVote: (choice: number, reasons: number[]) => void; onCancel?: () => void;
+}) {
+  const [choice, setChoice] = useState<number | null>(mine?.choice ?? null);
+  const [reasons, setReasons] = useState<number[]>(mine?.reasons ?? []);
+  const last = q.step === count - 1;
+  return (
+    <section className="card stack sm question">
+      {count > 1 && <span className="field-label">Question {q.step + 1} sur {count} · {STREETS[q.state.street]}</span>}
+      <h2>Ta réponse</h2>
+      <Answers options={q.options} bb={bb} value={choice} onChange={setChoice} />
+      <span className="field-label">Pourquoi ? (facultatif, deux au plus)</span>
+      <Chips label="Raisons" multi value={reasons}
+        onChange={x => setReasons(l => (l.includes(x) ? l.filter(y => y !== x) : l.length >= MAX_REASONS ? l : [...l, x]))}
+        items={REASONS.map((t, i) => ({ value: i, label: t, disabled: !reasons.includes(i) && reasons.length >= MAX_REASONS }))} />
+      <button className="btn primary big block" disabled={choice === null || busy} onClick={() => onVote(choice!, reasons)}>
+        {mine ? 'Changer mon vote' : last ? 'Voter et voir la suite' : 'Voter et passer à la question suivante'}
+      </button>
+      {onCancel && <button className="btn ghost block" onClick={onCancel}>Garder mon vote</button>}
+      <p className="muted">Les votes sont anonymes : seuls les totaux sont montrés.</p>
+    </section>
+  );
+}
+
+function Results({ q, res, mine }: { q: Question; res: ResultsData; mine: MyVote | null }) {
   const best = Math.max(...res.counts);
   return (
     <div className="results">
-      {post.options.map((o, i) => {
+      {q.options.map((o, i) => {
         const n = res.counts[i] ?? 0;
         const share = res.total ? n / res.total : 0;
         const why = (res.reasons[i] ?? []).map((c, r) => ({ c, r })).filter(x => x.c > 0).sort((a, b) => b.c - a.c).slice(0, 3);
@@ -167,8 +189,8 @@ function Results({ post, did }: { post: Post; did: number }) {
             </div>
             <div className="bar"><span style={{ width: `${share * 100}%` }} /></div>
             <div className="result-tags">
-              {i === did && <span className="tag gold">Ce qu'a fait le joueur</span>}
-              {i === post.my_vote && <span className="tag ok">Ton vote</span>}
+              {i === q.did && <span className="tag gold">Ce qu'a fait le joueur</span>}
+              {i === mine?.choice && <span className="tag ok">Ton vote</span>}
               {why.map(x => <span key={x.r} className="muted">{REASONS[x.r]} ({x.c})</span>)}
             </div>
           </div>

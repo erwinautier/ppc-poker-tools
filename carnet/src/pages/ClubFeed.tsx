@@ -4,15 +4,18 @@ import { Icon } from '../components/ui';
 import type { Post } from '../lib/club';
 import { STREETS, potOf } from '../lib/engine';
 import { chips, dateLabel } from '../lib/format';
-import { decisionState, heroCards, replayOf } from '../lib/hand';
+import { decisionPoints, heroCards } from '../lib/hand';
 import { ClubGate, useFeed } from './ClubPost';
 
+/** La première question ; s'il y en a d'autres, leurs tours. */
 function spot(p: Post): string {
   const h = p.hand;
-  const d = decisionState(h, replayOf(h));
-  if (!d) return '';
+  const [first, ...more] = decisionPoints(h);
+  if (!first) return '';
+  const d = first.state;
   const call = Math.min(d.current - d.ps[h.hero].bet, d.ps[h.hero].stack);
-  return `${STREETS[d.street]} · ${call > 0 ? `${chips(call)} à payer · pot ${chips(potOf(d))}` : `pot ${chips(potOf(d))} · au héros de parler`}`;
+  const then = more.length ? ` · puis ${[...new Set(more.map(x => STREETS[x.state.street].toLowerCase()))].join(', ')}` : '';
+  return `${STREETS[d.street]} · ${call > 0 ? `${chips(call)} à payer · pot ${chips(potOf(d))}` : `pot ${chips(potOf(d))} · au héros de parler`}${then}`;
 }
 
 export function ClubFeed() {
@@ -36,7 +39,7 @@ export function ClubFeed() {
                   <small>{p.author_name ?? 'Un membre'} · {dateLabel(Date.parse(p.created_at))} · {p.votes} vote{p.votes > 1 ? 's' : ''}</small>
                 </span>
                 <span className="handrow-tags">
-                  {p.hidden ? <span className="tag">Retirée</span> : p.mine ? <span className="tag gold">Ta main</span> : p.my_vote !== null ? <span className="tag ok">Voté</span> : <span className="tag gold">À toi</span>}
+                  {p.hidden ? <span className="tag">Retirée</span> : p.mine ? <span className="tag gold">Ta main</span> : p.my_votes.every(Boolean) ? <span className="tag ok">Voté</span> : <span className="tag gold">À toi</span>}
                 </span>
               </a>
             ))}
