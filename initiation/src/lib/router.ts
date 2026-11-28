@@ -2,8 +2,13 @@
 import { useEffect, useState } from 'react';
 import type { Phase } from './progress';
 import type { ParcoursId } from '../content/types';
+import { getStore } from './progress';
+
+const lastParcours = (): ParcoursId => getStore().lastParcours ?? 'initiation';
 
 export type Route =
+  /** Accueil de l'Académie : choix du parcours. */
+  | { name: 'academie' }
   /** p absent : le dernier parcours ouvert. */
   | { name: 'parcours'; p?: ParcoursId }
   | { name: 'lexique' }
@@ -21,12 +26,13 @@ export function parse(hash: string): Route {
     const ph = parts[2] as Phase | undefined;
     if (Number.isFinite(id)) return { name: 'lecon', id, phase: ph };
   }
-  return { name: 'parcours' };
+  return { name: 'academie' };
 }
 
 export function href(r: Route): string {
   switch (r.name) {
-    case 'parcours': return r.p ? `#/${r.p}` : '#/';
+    case 'academie': return '#/';
+    case 'parcours': return `#/${r.p ?? lastParcours()}`;
     case 'lexique': return '#/lexique';
     case 'fiches': return '#/fiches';
     case 'lecon': return `#/lecon/${r.id}${r.phase ? '/' + r.phase : ''}`;
