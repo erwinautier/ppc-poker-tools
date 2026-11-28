@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { getDA, logoFile, subscribeDA, toggleDA } from '../../../shared/ppc-da.js';
-import { PARCOURS, type ParcoursDef, lessonById, lessonLabel, moduleLabel, moduleOf } from '../content';
+import { PARCOURS, PARCOURS_ORDER, type ParcoursDef, lessonById, lessonLabel, moduleLabel, moduleOf } from '../content';
 import type { Lesson, ParcoursId } from '../content/types';
 import { TERMS, altOf, termsOfLesson } from '../content/lexique';
 import { labelForId } from '../content/labels';
@@ -9,7 +9,7 @@ import { go } from '../lib/router';
 const pdf = () => import('../lib/pdf');
 
 const BASE = import.meta.env.BASE_URL;
-const ORDER: ParcoursId[] = ['initiation', 'exploration'];
+const ORDER = PARCOURS_ORDER;
 
 export function Header({ title, sub }: { title: string; sub: string }) {
   const da = useSyncExternalStore(subscribeDA, getDA);
@@ -25,16 +25,48 @@ export function Header({ title, sub }: { title: string; sub: string }) {
   );
 }
 
-/** Sélecteur de parcours : Initiation / Exploration. */
-function ParcoursSwitch({ current }: { current: ParcoursId }) {
+// ── Accueil de l'Académie : choix du parcours ─────────────────────────────
+
+export function Academie() {
+  const store = useStore();
   return (
-    <div className="seg" role="tablist" aria-label="Choisir le parcours">
-      {ORDER.map(id => (
-        <button key={id} role="tab" aria-selected={id === current} className={id === current ? 'on' : ''}
-          onClick={() => { setLastParcours(id); go({ name: 'parcours', p: id }); }}>
-          {PARCOURS[id].short}
-        </button>
-      ))}
+    <div className="stack">
+      <Header title="Académie PPC" sub="Les cours interactifs du club" />
+      <p className="muted small">Choisis ton parcours. Chacun a sa progression, ses fiches et son attestation.</p>
+      {ORDER.map(id => {
+        const def = PARCOURS[id];
+        const validated = def.core.filter(l => isValidated(store.lessons[l.id])).length;
+        const started = def.lessons.some(l => store.lessons[l.id]?.defiDone);
+        const next = def.core.find(l => !isValidated(store.lessons[l.id]));
+        const cta = !started ? 'Commencer' : next ? `Reprendre · leçon ${lessonLabel(next)} : ${next.title}` : 'Parcours terminé · revoir';
+        return (
+          <button key={id} className="card parcours-card" onClick={() => { setLastParcours(id); go({ name: 'parcours', p: id }); }}>
+            <div className="row">
+              <span className="pc-ico" aria-hidden="true">{def.icon}</span>
+              <div className="grow">
+                <div className="row between"><strong className="pc-title">{def.title}</strong><span className="pill">{def.level}</span></div>
+                <div className="muted small">{def.lessons.length} leçons · {def.modules.length} modules</div>
+              </div>
+            </div>
+            <p className="small">{def.blurb}</p>
+            {started && (
+              <div>
+                <div className="row between"><span className="muted small">Ta progression</span><span className="muted small">{validated} / {def.core.length} leçons validées</span></div>
+                <div className="bar" style={{ marginTop: 6 }}><div style={{ width: `${(validated / def.core.length) * 100}%` }} /></div>
+              </div>
+            )}
+            <span className="pc-cta">{cta} →</span>
+          </button>
+        );
+      })}
+
+      {/* Seul accès interne à la page publique « Rejoindre le club » (rejoindre/), volontairement discret. */}
+      <p className="muted center small">Envie de jouer en vrai ? <a href="/rejoindre/">Rejoindre le club</a></p>
+
+      <p className="muted center small">Ta progression est enregistrée sur cet appareil uniquement.</p>
+      <button className="btn ghost sm" style={{ alignSelf: 'center' }} onClick={() => {
+        if (confirm('Effacer toute ta progression (tous les parcours : défis, scores, fiches débloquées) sur cet appareil ? Cette action est définitive.')) resetAll();
+      }}>Remettre ma progression à zéro</button>
     </div>
   );
 }
@@ -62,7 +94,7 @@ function ParcoursView({ def }: { def: ParcoursDef }) {
   return (
     <div className="stack">
       <Header title={def.title} sub={def.sub} />
-      <ParcoursSwitch current={def.id} />
+      <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={() => go({ name: 'academie' })}>← Tous les parcours</button>
       <div>
         <div className="row between"><span className="muted small">Ta progression</span><span className="muted small">{validated} / {core.length} leçons validées</span></div>
         <div className="bar" style={{ marginTop: 6 }}><div style={{ width: `${(validated / core.length) * 100}%` }} /></div>
@@ -128,13 +160,7 @@ function ParcoursView({ def }: { def: ParcoursDef }) {
         </button>
       )}
 
-      {/* Seul accès interne à la page publique « Rejoindre le club » (rejoindre/), volontairement discret. */}
-      <p className="muted center small">Envie de jouer en vrai ? <a href="/rejoindre/">Rejoindre le club</a></p>
-
       <p className="muted center small">Ta progression est enregistrée sur cet appareil uniquement.</p>
-      <button className="btn ghost sm" style={{ alignSelf: 'center' }} onClick={() => {
-        if (confirm('Effacer toute ta progression (Initiation et Exploration : défis, scores, fiches débloquées) sur cet appareil ? Cette action est définitive.')) resetAll();
-      }}>Remettre ma progression à zéro</button>
     </div>
   );
 }

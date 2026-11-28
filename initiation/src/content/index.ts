@@ -24,6 +24,10 @@ export interface ParcoursDef {
   title: string;
   sub: string;
   short: string;
+  /** Accueil de l'Académie : icône, niveau et présentation. */
+  icon: string;
+  level: string;
+  blurb: string;
   modules: Module[];
   lessons: Lesson[];
   core: Lesson[];
@@ -32,13 +36,20 @@ export interface ParcoursDef {
 export const PARCOURS: Record<ParcoursId, ParcoursDef> = {
   initiation: {
     id: 'initiation', title: 'Initiation', short: 'Initiation', sub: 'Apprendre le No Limit Hold’em pas à pas',
+    icon: '🎓', level: 'Débutant',
+    blurb: 'Pour découvrir le No Limit Hold’em : le but du jeu, les combinaisons, le déroulement d’une main, puis les premiers principes du préflop et du postflop.',
     modules: MODULES, lessons: LESSONS, core: CORE_LESSONS,
   },
   exploration: {
     id: 'exploration', title: 'Exploration', short: 'Exploration · niv. 2', sub: 'Le poker des joueurs de club, en VO',
+    icon: '🧭', level: 'Niveau 2',
+    blurb: 'Pour ceux qui connaissent les règles : le vocabulaire de la table en VO, les chiffres qui comptent, la pensée en ranges et les maths du sizing.',
     modules: EXPLO_MODULES, lessons: EXPLO_LESSONS, core: EXPLO_LESSONS.filter(l => !l.bonus),
   },
 };
+
+/** Ordre d'affichage des parcours sur l'accueil de l'Académie. */
+export const PARCOURS_ORDER: ParcoursId[] = ['initiation', 'exploration'];
 
 export const ALL_LESSONS: Lesson[] = [...LESSONS, ...EXPLO_LESSONS];
 export const ALL_MODULES: Module[] = [...MODULES, ...EXPLO_MODULES];
