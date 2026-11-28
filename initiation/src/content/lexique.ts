@@ -2,16 +2,30 @@
  * Lexique progressif : chaque terme est rattaché à la leçon qui l'introduit.
  * Il apparaît dans l'onglet Lexique dès que le bilan de cette leçon a été vu.
  */
+import { EXPLO_TERMS } from './explo/lexique';
+
 export interface Term {
   key: string;
+  /** Le mot tel qu'on l'affiche en titre (français dans l'Initiation, anglais dans l'Exploration). */
   term: string;
+  /** Équivalent anglais (Initiation). */
   en?: string;
+  /** Équivalent français (Exploration). */
+  fr?: string;
   def: string;
   lesson: number;
-  theme: 'Le jeu' | 'Les mains' | 'La donne' | 'Les actions' | 'Les positions' | 'Le préflop' | 'Le postflop' | 'Les chiffres' | 'Le jargon' | 'La table';
+  theme: 'Le jeu' | 'Les mains' | 'La donne' | 'Les actions' | 'Les positions' | 'Le préflop' | 'Le postflop' | 'Les chiffres' | 'Le jargon' | 'La table'
+    | 'Places' | 'Actions préflop' | 'Actions postflop' | 'Mains, tirages et boards' | 'Chiffres et combos' | 'Ranges' | 'Sizing' | 'Tournoi';
 }
 
-export const TERMS: Term[] = [
+/** Second libellé d'un terme : l'anglais (Initiation) ou le français (Exploration). */
+export function altOf(t: Term): string | undefined {
+  const alt = t.fr ?? t.en;
+  return alt && alt.toLowerCase() !== t.term.toLowerCase() ? alt : undefined;
+}
+
+/** Mots de l'Initiation. */
+export const INIT_TERMS: Term[] = [
   // Leçon 1
   { key: 'jeton', term: 'Jeton', en: 'chip', def: 'Unité de mise. Le but du jeu est d’en accumuler le plus possible.', lesson: 1, theme: 'Le jeu' },
   { key: 'pot', term: 'Pot', en: 'pot', def: 'Ensemble des jetons misés pendant une main. Il revient au gagnant de la main.', lesson: 1, theme: 'Le jeu' },
@@ -119,6 +133,9 @@ export const TERMS: Term[] = [
   { key: 'annonce', term: 'Annonce verbale', en: 'verbal declaration', def: 'Dire son action à voix haute. Elle engage le joueur.', lesson: 20, theme: 'La table' },
   { key: 'cartesparlent', term: 'Les cartes parlent', en: 'cards speak', def: 'Une main vaut ce que montrent ses cartes, quoi qu’ait annoncé le joueur.', lesson: 20, theme: 'La table' },
 ];
+
+/** Tous les mots (Initiation puis Exploration). */
+export const TERMS: Term[] = [...INIT_TERMS, ...EXPLO_TERMS];
 
 export const TERM_BY_KEY: Record<string, Term> = Object.fromEntries(TERMS.map(t => [t.key, t]));
 

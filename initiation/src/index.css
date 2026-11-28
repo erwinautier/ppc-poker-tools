@@ -266,9 +266,10 @@ input[type=range] { width: 100%; accent-color: var(--primary); }
 .hbar > div { height: 100%; background: var(--accent); transition: width .2s; }
 .eqbar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; font-size: 0.75rem; font-weight: 800; }
 .eqbar > div { display: flex; align-items: center; justify-content: center; transition: width .15s; white-space: nowrap; overflow: hidden; }
-.eqbar .ea { background: var(--accent); color: var(--on-accent); }
+.eqbar .ea { background: var(--ppc-or); color: var(--on-accent); }
 .eqbar .et { background: var(--surface2); color: var(--text-muted); }
-.eqbar .eb { background: var(--primary); color: var(--on-primary); }
+/* B en turquoise : en bleu nuit, accent et primary sont tous deux l'or */
+.eqbar .eb { background: var(--ppc-turquoise); color: var(--on-accent); }
 .chip-big { font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .narr { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.9rem; }
 .narr .line { padding: 2px 0; }
@@ -278,3 +279,25 @@ input[type=range] { width: 100%; accent-color: var(--primary); }
   .pcard.lg { width: 42px; height: 59px; }
   .seat .disc { min-width: 48px; font-size: 0.64rem; padding: 3px 4px; }
 }
+
+/* ── Sélecteur de parcours (Initiation / Exploration) ───────────────────── */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.seg.three { grid-template-columns: 1fr 1fr 1fr; }
+.seg button { border: 1px solid transparent; background: none; color: var(--text-muted); border-radius: 6px; padding: 7px 4px; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--text); border-color: var(--ppc-or); }
+.lesson-row .num { min-width: 26px; width: auto; padding: 0 5px; border-radius: 13px; }
+
+/* ── Exploration : tuiles de sizing, combos ─────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; text-align: center; }
+.tile .tv { font-size: 1.25rem; font-weight: 800; color: var(--ppc-or); }
+.combos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.combos span { text-align: center; font-size: 0.78rem; font-weight: 700; padding: 4px 2px; border-radius: 5px; }
+.combos .live { background: var(--success-bg); color: var(--success); }
+.combos .dead { background: var(--surface2); color: var(--text-muted); text-decoration: line-through; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+/* Grilles de ranges de l'Exploration : cases vides visibles, range A en or, range B en turquoise */
+.rgrid .hgrid div, .rgrid .hgrid .pair { background: var(--border); }
+.rgrid .hgrid .rga { background: var(--ppc-or); }
+.rgrid .hgrid .rgb { background: var(--ppc-turquoise); }

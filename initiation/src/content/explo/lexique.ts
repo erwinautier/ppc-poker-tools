@@ -1,0 +1,93 @@
+/**
+ * Lexique du parcours Exploration : le terme employé à la table (en anglais) en titre,
+ * l'équivalent français en second. Leçons 101 à 116 (affichées A1 à E16).
+ */
+import type { Term } from '../lexique';
+
+type T = Omit<Term, 'theme'> & { theme: Term['theme'] };
+
+export const EXPLO_TERMS: T[] = [
+  // A1 · Les places
+  { key: 'x-utg', term: 'UTG', fr: 'under the gun', def: 'Premier joueur à parler préflop, juste à gauche de la grosse blinde. UTG+1 et UTG+2 le suivent sur les grandes tables.', lesson: 101, theme: 'Places' },
+  { key: 'x-lj', term: 'LJ (lojack)', fr: 'troisième place avant le bouton', def: 'La place juste avant le HJ.', lesson: 101, theme: 'Places' },
+  { key: 'x-hj', term: 'HJ (hijack)', fr: 'deuxième place avant le bouton', def: 'La place juste avant le cutoff.', lesson: 101, theme: 'Places' },
+  { key: 'x-co', term: 'CO (cutoff)', fr: 'place juste avant le bouton', def: 'La dernière place avant le bouton, l’une des plus rentables.', lesson: 101, theme: 'Places' },
+  { key: 'x-groups', term: 'EP / MP / LP', fr: 'positions précoces, du milieu, tardives', def: 'Early, middle et late position : les groupes de places selon leur ordre de parole.', lesson: 101, theme: 'Places' },
+  { key: 'x-ip', term: 'IP', fr: 'en position', def: 'In position : parler après son adversaire après le flop.', lesson: 101, theme: 'Places' },
+  { key: 'x-oop', term: 'OOP', fr: 'hors de position', def: 'Out of position : parler avant son adversaire après le flop.', lesson: 101, theme: 'Places' },
+  // A2 · Actions préflop
+  { key: 'x-rfi', term: 'Open (RFI)', fr: 'ouverture', def: 'Raise first in : être le premier à relancer quand tout le monde s’est couché avant soi.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-limp', term: 'Limp', fr: 'suivre la grosse blinde', def: 'Entrer dans le coup en payant seulement la grosse blinde.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-iso', term: 'Iso-raise', fr: 'relance d’isolation', def: 'Relancer après un ou plusieurs limpers pour jouer le coup contre eux seuls.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-coldcall', term: 'Cold call', fr: 'suivre « à froid »', def: 'Payer une relance sans avoir encore rien investi dans le pot.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-flat', term: 'Flat', fr: 'se contenter de suivre', def: 'Suivre au lieu de relancer, typiquement face à un 3-bet (« flat the 3-bet »).', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-3bet', term: '3-bet', fr: 'sur-relance', def: 'Relance d’un open. La grosse blinde compte comme la 1re mise, l’open comme la 2e.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-4bet', term: '4-bet / 5-bet', fr: 'relances suivantes', def: 'Relance d’un 3-bet, puis relance d’un 4-bet.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-squeeze', term: 'Squeeze', fr: 'relance après un open et un call', def: '3-bet face à un open ET au moins un joueur qui a suivi : on « presse » les deux.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-steal', term: 'Steal', fr: 'vol des blindes', def: 'Open depuis le CO, le BTN ou la SB, d’abord pour remporter les blindes.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-resteal', term: 'Resteal', fr: 'contre-vol', def: '3-bet (souvent à tapis) depuis les blindes face à un steal.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-openshove', term: 'Open-shove', fr: 'ouvrir à tapis', def: 'Être le premier à entrer dans le coup en mettant tout son tapis.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-jam', term: 'Jam / re-shove', fr: 'relancer à tapis', def: 'Mettre tout son tapis en relance, typiquement face à un open.', lesson: 102, theme: 'Actions préflop' },
+  { key: 'x-bvb', term: 'BvB', fr: 'blinde contre blinde', def: 'Blind versus blind : le coup se joue entre la SB et la BB, tous les autres se sont couchés.', lesson: 102, theme: 'Actions préflop' },
+  // A3 · Actions postflop
+  { key: 'x-cbet', term: 'C-bet', fr: 'mise de continuation', def: 'Mise au flop du dernier relanceur préflop.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-delayed', term: 'Delayed c-bet', fr: 'c-bet retardé', def: 'Le relanceur préflop checke le flop puis mise à la turn.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-donk', term: 'Donk bet', fr: 'mise « dans » l’agresseur', def: 'Le joueur hors de position mise avant que l’agresseur du tour précédent ait pu parler.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-probe', term: 'Probe bet', fr: 'mise de sonde', def: 'Mise à la turn du joueur hors de position quand le relanceur a checké derrière au flop.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-xr', term: 'Check-raise', fr: 'check puis relance', def: 'Checker, puis relancer quand l’adversaire mise.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-float', term: 'Float', fr: 'suivre pour reprendre plus tard', def: 'Suivre une mise en position, souvent avec une main faible, pour tenter de prendre le pot plus tard.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-barrel', term: 'Barrel', fr: 'mises successives', def: 'Continuer à miser tour après tour : double barrel (flop et turn), triple barrel (jusqu’à la river).', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-overbet', term: 'Overbet', fr: 'mise plus grosse que le pot', def: 'Mise supérieure à la taille du pot.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-block', term: 'Block bet', fr: 'mise de blocage', def: 'Petite mise, souvent hors de position, pour fixer soi-même le prix et éviter une mise plus grosse.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-checkback', term: 'Check-back', fr: 'checker derrière', def: 'En position, checker après un check adverse : le tour se termine sans mise.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-slowplay', term: 'Slowplay', fr: 'jouer lentement', def: 'Jouer passivement une main très forte pour la cacher.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-thin', term: 'Thin value', fr: 'valeur fine', def: 'Mise de valeur avec une main qui n’est que légèrement devant les mains qui paient.', lesson: 103, theme: 'Actions postflop' },
+  { key: 'x-bluffcatcher', term: 'Bluff catcher', fr: 'main qui attrape les bluffs', def: 'Main qui ne bat que les bluffs de l’adversaire, et perd contre toutes ses mises de valeur.', lesson: 103, theme: 'Actions postflop' },
+  // A4 · Mains, tirages, boards
+  { key: 'x-set', term: 'Set', fr: 'brelan avec une paire servie', def: 'Une paire en main plus une carte du board. Mieux caché que les trips.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-trips', term: 'Trips', fr: 'brelan avec une paire au board', def: 'Une carte en main plus une paire au board.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-overpair', term: 'Overpair / underpair', fr: 'surpaire / sous-paire', def: 'Paire servie plus haute (ou plus basse) que toutes les cartes du board.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-tptk', term: 'TPTK', fr: 'top paire, meilleur kicker', def: 'Top pair top kicker : paire avec la plus haute carte du board et le meilleur kicker possible.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-secondpair', term: 'Second pair / bottom pair', fr: 'deuxième paire / paire basse', def: 'Paire avec la deuxième (ou la plus basse) carte du board.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-fd', term: 'FD / NFD', fr: 'tirage couleur / tirage couleur max', def: 'Flush draw : 4 cartes à la couleur. Nut flush draw : avec la plus haute carte possible de la couleur.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-oesd', term: 'OESD', fr: 'tirage suite ouvert', def: 'Open-ended straight draw : quatre cartes consécutives, 8 outs.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-gutshot', term: 'Gutshot', fr: 'tirage suite ventral', def: 'Il manque une carte au milieu de la suite : 4 outs.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-combo', term: 'Combo draw', fr: 'double tirage', def: 'Tirage couleur et tirage suite à la fois (jusqu’à 15 outs).', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-backdoor', term: 'Backdoor', fr: 'tirage par la porte de derrière', def: 'Tirage qui a besoin de la turn ET de la river (ex. 3 cartes à la couleur au flop).', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-rainbow', term: 'Rainbow / two-tone / monotone', fr: 'board de 3, 2 ou 1 couleur(s)', def: 'Flop de trois couleurs différentes, avec deux cartes de la même couleur, ou d’une seule couleur.', lesson: 104, theme: 'Mains, tirages et boards' },
+  { key: 'x-drywet', term: 'Dry / wet', fr: 'board sec / coordonné', def: 'Board offrant peu (dry) ou beaucoup (wet) de tirages et de mains fortes.', lesson: 104, theme: 'Mains, tirages et boards' },
+  // B · Chiffres et combos
+  { key: 'x-flip', term: 'Coin flip', fr: 'pile ou face', def: 'Duel proche du 50/50, typiquement une petite paire contre deux overcards.', lesson: 105, theme: 'Chiffres et combos' },
+  { key: 'x-dominated', term: 'Dominated', fr: 'main dominée', def: 'Main qui partage une carte avec une main adverse mais a un moins bon kicker (AQ contre AK).', lesson: 105, theme: 'Chiffres et combos' },
+  { key: 'x-overcards', term: 'Overcards', fr: 'cartes plus hautes', def: 'Cartes plus hautes que la paire adverse ou que le board.', lesson: 105, theme: 'Chiffres et combos' },
+  { key: 'x-setmining', term: 'Set mining', fr: 'jouer pour toucher un set', def: 'Payer avec une petite paire dans le seul espoir de toucher un set au flop (1 fois sur 8,5).', lesson: 106, theme: 'Chiffres et combos' },
+  { key: 'x-implied', term: 'Implied odds', fr: 'cote implicite', def: 'Ce que l’on peut gagner en plus sur les tours suivants quand on touche.', lesson: 106, theme: 'Chiffres et combos' },
+  { key: 'x-equity', term: 'Equity', fr: 'équité', def: 'Part du pot qui revient en moyenne à une main (ou à une range) si toutes les cartes sont distribuées.', lesson: 107, theme: 'Chiffres et combos' },
+  { key: 'x-combo-n', term: 'Combo', fr: 'combinaison de deux cartes', def: 'Une façon précise de détenir une main : 6 pour une paire, 4 pour une main assortie, 12 pour une dépareillée.', lesson: 108, theme: 'Chiffres et combos' },
+  { key: 'x-blocker', term: 'Blocker', fr: 'bloqueur', def: 'Carte que l’on détient et qui réduit le nombre de combos possibles d’une main chez l’adversaire.', lesson: 108, theme: 'Chiffres et combos' },
+  // C · Ranges
+  { key: 'x-range', term: 'Range', fr: 'éventail de mains', def: 'L’ensemble des mains qu’un joueur peut avoir dans une situation donnée.', lesson: 109, theme: 'Ranges' },
+  { key: 'x-linear', term: 'Linear (merged)', fr: 'range linéaire', def: 'Les meilleures mains jusqu’à un certain seuil, sans trou.', lesson: 109, theme: 'Ranges' },
+  { key: 'x-polar', term: 'Polarized', fr: 'range polarisée', def: 'Des mains très fortes et des bluffs, sans les mains moyennes.', lesson: 109, theme: 'Ranges' },
+  { key: 'x-capped', term: 'Capped', fr: 'range plafonnée', def: 'Range qui ne contient plus les meilleures mains (elles auraient relancé).', lesson: 109, theme: 'Ranges' },
+  { key: 'x-rangeadv', term: 'Range advantage', fr: 'avantage de range', def: 'Avoir plus d’équité que l’adversaire sur un board donné, range contre range.', lesson: 110, theme: 'Ranges' },
+  { key: 'x-nutadv', term: 'Nut advantage', fr: 'avantage de nuts', def: 'Avoir une plus grande part de mains très fortes que l’adversaire sur un board donné.', lesson: 110, theme: 'Ranges' },
+  { key: 'x-initiative', term: 'Initiative', fr: 'initiative', def: 'Statut du dernier agresseur : c’est lui qui peut faire un c-bet.', lesson: 111, theme: 'Ranges' },
+  { key: 'x-realize', term: 'Equity realization', fr: 'réalisation de l’équité', def: 'Part de son équité qu’une main réussit vraiment à gagner ; on la réalise mieux en position.', lesson: 111, theme: 'Ranges' },
+  // D · Sizing
+  { key: 'x-potodds', term: 'Pot odds', fr: 'cote du pot', def: 'Rapport entre ce qu’on paie et ce qu’on peut gagner : il donne l’équité minimale pour suivre.', lesson: 112, theme: 'Sizing' },
+  { key: 'x-alpha', term: 'Alpha', fr: 'réussite nécessaire d’un bluff', def: 'Fréquence à laquelle un bluff doit faire coucher l’adversaire pour être rentable : mise ÷ (pot + mise).', lesson: 113, theme: 'Sizing' },
+  { key: 'x-mdf', term: 'MDF', fr: 'fréquence minimale de défense', def: 'Minimum defense frequency : part de sa range à continuer face à une mise pour que les bluffs adverses ne soient pas rentables : pot ÷ (pot + mise).', lesson: 113, theme: 'Sizing' },
+  { key: 'x-ratio', term: 'Value-to-bluff ratio', fr: 'ratio value / bluff', def: 'Proportion de mains de valeur et de bluffs dans une range de mise polarisée.', lesson: 113, theme: 'Sizing' },
+  { key: 'x-foldeq', term: 'Fold equity', fr: 'équité de fold', def: 'Ce que rapporte une mise grâce aux fois où l’adversaire se couche.', lesson: 113, theme: 'Sizing' },
+  { key: 'x-spr', term: 'SPR', fr: 'ratio tapis / pot', def: 'Stack-to-pot ratio : tapis effectif divisé par le pot au flop.', lesson: 114, theme: 'Sizing' },
+  { key: 'x-geo', term: 'Geometric sizing', fr: 'mises géométriques', def: 'La même fraction du pot à chaque tour, calculée pour être à tapis à la river.', lesson: 114, theme: 'Sizing' },
+  { key: 'x-committed', term: 'Pot-committed', fr: 'engagé dans le pot', def: 'Situation où l’on a tant investi par rapport à ce qui reste qu’il n’est plus raisonnable de se coucher.', lesson: 114, theme: 'Sizing' },
+  // E · Tournoi
+  { key: 'x-eff', term: 'Effective stack', fr: 'tapis effectif', def: 'Le plus petit des tapis en jeu : c’est le maximum que l’on peut gagner ou perdre dans le coup.', lesson: 115, theme: 'Tournoi' },
+  { key: 'x-pushfold', term: 'Push / fold', fr: 'tapis ou couché', def: 'Stratégie à tapis court : on ne relance plus, on fait tapis ou on se couche.', lesson: 115, theme: 'Tournoi' },
+  { key: 'x-ev', term: 'EV', fr: 'espérance de gain', def: 'Expected value : ce que rapporte une décision en moyenne, si on la répétait de nombreuses fois.', lesson: 115, theme: 'Tournoi' },
+  { key: 'x-icm', term: 'ICM', fr: 'modèle de valeur des jetons', def: 'Independent Chip Model : convertit les tapis en valeur monétaire selon la structure des paiements.', lesson: 116, theme: 'Tournoi' },
+  { key: 'x-bubble', term: 'Bubble', fr: 'bulle', def: 'Moment d’un tournoi juste avant les places payées, où l’ICM pèse le plus.', lesson: 116, theme: 'Tournoi' },
+  { key: 'x-riskpremium', term: 'Risk premium', fr: 'prime de risque', def: 'Équité supplémentaire qu’il faut en tournoi, par rapport au cash game, pour risquer son tapis.', lesson: 116, theme: 'Tournoi' },
+];

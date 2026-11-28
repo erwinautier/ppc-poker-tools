@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { TERM_BY_KEY } from '../content/lexique';
+import { labelForId } from '../content/labels';
 
 /** Mot du lexique, souligné en pointillés : un toucher affiche sa définition. */
 export function T({ k, children }: { k: string; children?: ReactNode }) {
@@ -25,12 +26,12 @@ export function TermPopup({ k, onClose }: { k: string; onClose: () => void }) {
         <div className="row between">
           <div>
             <div className="tt">{t.term}</div>
-            {t.en && <div className="en">En anglais : {t.en}</div>}
+            {t.fr ? <div className="en">En français : {t.fr}</div> : t.en && <div className="en">En anglais : {t.en}</div>}
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Fermer">✕</button>
         </div>
         <p style={{ marginTop: 8 }}>{t.def}</p>
-        <p className="muted" style={{ marginTop: 8 }}>Introduit en leçon {t.lesson}</p>
+        <p className="muted" style={{ marginTop: 8 }}>Introduit en leçon {labelForId(t.lesson)}</p>
       </div>
     </div>
   );

@@ -4,7 +4,8 @@
  */
 import { jsPDF } from 'jspdf';
 import type { Fiche, FicheBlock, Lesson } from '../content/types';
-import type { Term } from '../content/lexique';
+import { type Term, altOf } from '../content/lexique';
+import { labelForId } from '../content/labels';
 import { cards as parseCards, rankLabel } from './cards';
 import { type DA, getDA, logoFile } from '../../../shared/ppc-da.js';
 
@@ -48,7 +49,7 @@ export function latin(s: string): string {
   return s
     .replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...').replace(/[–—−]/g, '-')
     .replace(/œ/g, 'oe').replace(/Œ/g, 'OE').replace(/→/g, '->').replace(/≈/g, 'env. ').replace(/≥/g, '>=').replace(/≤/g, '<=')
-    .replace(/♠/g, ' pique').replace(/♥/g, ' coeur').replace(/♦/g, ' carreau').replace(/♣/g, ' trefle')
+    .replace(/€/g, 'euros').replace(/♠/g, ' pique').replace(/♥/g, ' coeur').replace(/♦/g, ' carreau').replace(/♣/g, ' trefle')
     .replace(/[  ]/g, ' ')
     .replace(/[^\u0000-ÿ]/g, '');
 }
@@ -225,20 +226,21 @@ function stripe(doc: jsPDF, x: number, y: number, w: number, h: number) {
   FRISE.forEach((c, i) => { doc.setFillColor(...c); doc.rect(x + (i * w) / FRISE.length, y, w / FRISE.length, h, 'F'); });
 }
 
-function footers(doc: jsPDF) {
+function footers(doc: jsPDF, parcours: 'initiation' | 'exploration' = 'initiation') {
   const n = doc.getNumberOfPages();
   for (let i = 1; i <= n; i++) {
     doc.setPage(i);
     stripe(doc, M, H - 7, CW, 1.6);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED);
-    doc.text(latin('Penthièvre Poker Club · Initiation au No Limit Hold’em'), M, H - 9);
+    doc.text(latin(parcours === 'exploration' ? 'Penthièvre Poker Club · Exploration, niveau 2' : 'Penthièvre Poker Club · Initiation au No Limit Hold’em'), M, H - 9);
     doc.text(`${i} / ${n}`, W - M, H - 9, { align: 'right' });
   }
 }
 
 async function writeFiche(wr: Writer, lesson: Lesson, moduleTitle: string, terms: Term[]) {
   const f: Fiche = lesson.fiche;
-  await header(wr, `FICHE DE SYNTHÈSE · LEÇON ${lesson.id}${lesson.bonus ? ' (BONUS)' : ''}`, lesson.title, `Module ${lesson.module} · ${moduleTitle} — ${lesson.objective}`);
+  const ex = lesson.parcours === 'exploration';
+  await header(wr, `FICHE DE SYNTHÈSE · ${ex ? 'EXPLORATION · ' : ''}LEÇON ${labelForId(lesson.id)}${lesson.bonus ? ' (BONUS)' : ''}`, lesson.title, `${ex ? `Module ${labelForId(lesson.id)[0]}` : `Module ${lesson.module}`} · ${moduleTitle} — ${lesson.objective}`);
   wr.section('L’essentiel');
   wr.bullets(f.essentiel);
   f.blocks?.forEach(b => block(wr, b));
@@ -246,7 +248,7 @@ async function writeFiche(wr: Writer, lesson: Lesson, moduleTitle: string, terms
   if (terms.length && lesson.id !== 19) {
     wr.section('Les mots de la leçon');
     for (const t of terms) {
-      const head = `${t.term}${t.en && t.en.toLowerCase() !== t.term.toLowerCase() ? ` (${t.en})` : ''} : `;
+      const head = `${t.term}${altOf(t) ? ` (${altOf(t)})` : ''} : `;
       wr.doc.setFont('helvetica', 'bold'); wr.doc.setFontSize(9.5);
       const hw = wr.doc.getTextWidth(latin(head));
       const lines = wr.wrap(t.def, CW - hw, 9.5);
@@ -271,11 +273,13 @@ export async function downloadFiche(lesson: Lesson, moduleTitle: string, terms: 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const wr = new Writer(doc);
   await writeFiche(wr, lesson, moduleTitle, terms);
-  footers(doc);
-  doc.save(`PPC-Initiation-Lecon-${String(lesson.id).padStart(2, '0')}-${slug(lesson.title)}.pdf`);
+  footers(doc, lesson.parcours);
+  doc.save(lesson.parcours === 'exploration'
+    ? `PPC-Exploration-Lecon-${labelForId(lesson.id)}-${slug(lesson.title)}.pdf`
+    : `PPC-Initiation-Lecon-${String(lesson.id).padStart(2, '0')}-${slug(lesson.title)}.pdf`);
 }
 
-export async function downloadAllFiches(items: { lesson: Lesson; moduleTitle: string; terms: Term[] }[]) {
+export async function downloadAllFiches(items: { lesson: Lesson; moduleTitle: string; terms: Term[] }[], parcours: 'initiation' | 'exploration' = 'initiation') {
   choosePalette();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const wr = new Writer(doc);
@@ -283,13 +287,14 @@ export async function downloadAllFiches(items: { lesson: Lesson; moduleTitle: st
     if (i > 0) { doc.addPage(); wr.y = M; }
     await writeFiche(wr, items[i].lesson, items[i].moduleTitle, items[i].terms);
   }
-  footers(doc);
-  doc.save('PPC-Initiation-Toutes-les-fiches.pdf');
+  footers(doc, parcours);
+  doc.save(parcours === 'exploration' ? 'PPC-Exploration-Toutes-les-fiches.pdf' : 'PPC-Initiation-Toutes-les-fiches.pdf');
 }
 
 // ── Attestation ────────────────────────────────────────────────────────────
 
-export async function downloadAttestation(name: string, avg: number) {
+export async function downloadAttestation(name: string, avg: number, parcours: 'initiation' | 'exploration' = 'initiation') {
+  const ex = parcours === 'exploration';
   choosePalette();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   const w = 297, h = 210;
@@ -304,13 +309,13 @@ export async function downloadAttestation(name: string, avg: number) {
     doc.text(latin(s), w / 2, y, { align: 'center' });
   };
   c('PENTHIÈVRE POKER CLUB', 64, 11, 'bold', MUTED);
-  c('ATTESTATION D’INITIATION', 80, 28, 'bold', PRUNE);
-  c('au No Limit Texas Hold’em', 91, 16, 'normal', MUTED);
+  c(ex ? 'ATTESTATION EXPLORATION' : 'ATTESTATION D’INITIATION', 80, 28, 'bold', PRUNE);
+  c(ex ? 'No Limit Texas Hold’em · niveau 2' : 'au No Limit Texas Hold’em', 91, 16, 'normal', MUTED);
   c('décernée à', 108, 12, 'italic', MUTED);
   c(name || '________________________', 123, 26, 'bold', ACCENT);
   doc.setDrawColor(...OR); doc.setLineWidth(0.6); doc.line(w / 2 - 60, 128, w / 2 + 60, 128);
-  c(`pour avoir validé les 19 leçons du parcours d’initiation (score moyen : ${Math.round(avg * 100)} %).`, 138, 12);
-  c('Le but du jeu · Les combinaisons · Le déroulement d’une main · Le préflop · Le postflop · Repères et vocabulaire', 148, 9.5, 'normal', MUTED);
+  c(ex ? `pour avoir validé les 14 leçons du parcours Exploration (score moyen : ${Math.round(avg * 100)} %).` : `pour avoir validé les 19 leçons du parcours d’initiation (score moyen : ${Math.round(avg * 100)} %).`, 138, 12);
+  c(ex ? 'Parler poker · Les chiffres qui comptent · Penser en ranges · Sizing : les maths' : 'Le but du jeu · Les combinaisons · Le déroulement d’une main · Le préflop · Le postflop · Repères et vocabulaire', 148, 9.5, 'normal', MUTED);
   c(`Le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, 172, 11);
-  doc.save(`PPC-Attestation-Initiation${name ? '-' + slug(name) : ''}.pdf`);
+  doc.save(`PPC-Attestation-${ex ? 'Exploration' : 'Initiation'}${name ? '-' + slug(name) : ''}.pdf`);
 }

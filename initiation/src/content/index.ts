@@ -1,9 +1,10 @@
-import type { Lesson, Module } from './types';
+import type { Lesson, Module, ParcoursId } from './types';
 import { LESSONS_M1M2 } from './lessons/m1m2';
 import { LESSONS_M3 } from './lessons/m3';
 import { LESSONS_M4 } from './lessons/m4';
 import { LESSONS_M5 } from './lessons/m5';
 import { LESSONS_M6 } from './lessons/m6';
+import { EXPLO_LESSONS, EXPLO_MODULES } from './explo';
 
 export const MODULES: Module[] = [
   { id: 1, title: 'Le but du jeu', short: 'Pourquoi on joue' },
@@ -14,7 +15,38 @@ export const MODULES: Module[] = [
   { id: 6, title: 'Repères et vocabulaire', short: 'Chiffres, jargon, étiquette' },
 ];
 
+/** Leçons de l'Initiation (parcours débutant). */
 export const LESSONS: Lesson[] = [...LESSONS_M1M2, ...LESSONS_M3, ...LESSONS_M4, ...LESSONS_M5, ...LESSONS_M6];
-
-export function lessonById(id: number): Lesson | undefined { return LESSONS.find(l => l.id === id); }
 export const CORE_LESSONS = LESSONS.filter(l => !l.bonus);
+
+export interface ParcoursDef {
+  id: ParcoursId;
+  title: string;
+  sub: string;
+  short: string;
+  modules: Module[];
+  lessons: Lesson[];
+  core: Lesson[];
+}
+
+export const PARCOURS: Record<ParcoursId, ParcoursDef> = {
+  initiation: {
+    id: 'initiation', title: 'Initiation', short: 'Initiation', sub: 'Apprendre le No Limit Hold’em pas à pas',
+    modules: MODULES, lessons: LESSONS, core: CORE_LESSONS,
+  },
+  exploration: {
+    id: 'exploration', title: 'Exploration', short: 'Exploration · niv. 2', sub: 'Le poker des joueurs de club, en VO',
+    modules: EXPLO_MODULES, lessons: EXPLO_LESSONS, core: EXPLO_LESSONS.filter(l => !l.bonus),
+  },
+};
+
+export const ALL_LESSONS: Lesson[] = [...LESSONS, ...EXPLO_LESSONS];
+export const ALL_MODULES: Module[] = [...MODULES, ...EXPLO_MODULES];
+
+export function lessonById(id: number): Lesson | undefined { return ALL_LESSONS.find(l => l.id === id); }
+export function parcoursOf(l: Lesson): ParcoursDef { return PARCOURS[l.parcours ?? 'initiation']; }
+export function moduleOf(l: Lesson): Module { return ALL_MODULES.find(m => m.id === l.module)!; }
+/** Numéro affiché d'une leçon : « 5 » ou « B5 ». */
+export function lessonLabel(l: Lesson): string { return l.code ?? String(l.id); }
+/** Nom affiché d'un module : « Module 3 » ou « Module B ». */
+export function moduleLabel(m: Module): string { return `Module ${m.letter ?? m.id}`; }

@@ -17,7 +17,8 @@ import {
 // Leçon 10 · Toutes les mains de départ ne se valent pas
 // ════════════════════════════════════════════════════════════════════════════
 
-function Duel({ a, b, done }: { a: Card[]; b: Card[]; done: (x: { correct: boolean; answer: string; expected: string }) => void }) {
+/** Duel simulé : choisir le favori, puis la simulation tranche (préflop, ou sur un board). */
+export function Duel({ a, b, done, board = [] }: { a: Card[]; b: Card[]; done: (x: { correct: boolean; answer: string; expected: string }) => void; board?: Card[] }) {
   const [choice, setChoice] = useState<'a' | 'b' | null>(null);
   const [eq, setEq] = useState<Equity | null>(null);
   const timer = useRef<number | undefined>(undefined);
@@ -28,7 +29,7 @@ function Duel({ a, b, done }: { a: Card[]; b: Card[]; done: (x: { correct: boole
     let acc: Equity | undefined;
     let k = 0;
     const step = () => {
-      acc = equityRun(a, b, [], 1500, acc);
+      acc = equityRun(a, b, board, 1500, acc);
       setEq(acc);
       if (++k < 14) timer.current = window.setTimeout(step, 70);
       else {
@@ -42,6 +43,12 @@ function Duel({ a, b, done }: { a: Card[]; b: Card[]; done: (x: { correct: boole
   const sa = eq ? share(eq, 'a') : 0, sb = eq ? share(eq, 'b') : 0;
   return (
     <div className="stack">
+      {board.length > 0 && (
+        <div className="stack" style={{ gap: 4 }}>
+          <span className="muted small center">Board</span>
+          <CardRow cs={board} size="sm" />
+        </div>
+      )}
       <div className="row" style={{ justifyContent: 'space-around' }}>
         <button className={`opt ${choice === 'a' ? 'sel' : ''}`} style={{ textAlign: 'center' }} disabled={!!choice} onClick={() => go('a')}>
           <div className="small muted mb">Main A</div><CardRow cs={a} />

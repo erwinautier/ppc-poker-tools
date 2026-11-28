@@ -27,6 +27,8 @@ export interface LessonProgress {
 export interface Store {
   lessons: Record<number, LessonProgress>;
   name?: string;
+  /** Dernier parcours ouvert (initiation par défaut). */
+  lastParcours?: 'initiation' | 'exploration';
 }
 
 const KEY = 'ppc-initiation-v1';
@@ -62,6 +64,7 @@ export function updateLesson(id: number, patch: Partial<LessonProgress>) {
   save();
 }
 export function setName(name: string) { state = { ...state, name }; save(); }
+export function setLastParcours(p: 'initiation' | 'exploration') { if (state.lastParcours !== p) { state = { ...state, lastParcours: p }; save(); } }
 export function resetAll() { state = { lessons: {} }; save(); }
 
 export function isValidated(p: LessonProgress | undefined): boolean {

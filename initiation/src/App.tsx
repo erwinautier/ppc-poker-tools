@@ -12,7 +12,7 @@ export default function App() {
     <>
       <div className="ppc-stripe" aria-hidden="true" />
       <div className="page">
-        {route.name === 'parcours' && <Parcours />}
+        {route.name === 'parcours' && <Parcours p={route.p} />}
         {route.name === 'lexique' && <Lexique />}
         {route.name === 'fiches' && <Fiches />}
         {route.name === 'lecon' && (lesson

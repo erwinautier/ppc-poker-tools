@@ -1,5 +1,6 @@
 import type { FicheBlock, Lesson } from '../content/types';
-import { termsOfLesson } from '../content/lexique';
+import { altOf, termsOfLesson } from '../content/lexique';
+import { labelForId } from '../content/labels';
 import { CardRow } from './Cards';
 
 function Block({ b }: { b: FicheBlock }) {
@@ -37,7 +38,7 @@ export function FichePreview({ lesson }: { lesson: Lesson }) {
   const terms = termsOfLesson(lesson.id);
   return (
     <div className="fiche-sheet">
-      <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#7d5a74', letterSpacing: '.05em' }}>FICHE DE SYNTHÈSE · LEÇON {lesson.id}</div>
+      <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#7d5a74', letterSpacing: '.05em' }}>FICHE DE SYNTHÈSE · {lesson.parcours === 'exploration' ? 'EXPLORATION · ' : ''}LEÇON {labelForId(lesson.id)}</div>
       <div style={{ fontSize: '1.05rem', fontWeight: 800, margin: '2px 0 8px' }}>{lesson.title}</div>
       <h3>L’essentiel</h3>
       <ul>{f.essentiel.map(e => <li key={e}>{e}</li>)}</ul>
@@ -47,7 +48,7 @@ export function FichePreview({ lesson }: { lesson: Lesson }) {
       {terms.length > 0 && lesson.id !== 19 && (
         <>
           <h3>Les mots de la leçon</h3>
-          <ul>{terms.map(t => <li key={t.key}><strong>{t.term}</strong>{t.en && t.en.toLowerCase() !== t.term.toLowerCase() ? ` (${t.en})` : ''} : {t.def}</li>)}</ul>
+          <ul>{terms.map(t => <li key={t.key}><strong>{t.term}</strong>{altOf(t) ? ` (${altOf(t)})` : ''} : {t.def}</li>)}</ul>
         </>
       )}
     </div>

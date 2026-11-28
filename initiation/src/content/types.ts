@@ -101,9 +101,16 @@ export interface Fiche {
 
 // ── Leçons ─────────────────────────────────────────────────────────────────
 
+/** Les deux parcours de l'app : le cours débutant et le niveau 2. */
+export type ParcoursId = 'initiation' | 'exploration';
+
 export interface Lesson {
   id: number;
   module: number;
+  /** Parcours (initiation par défaut). */
+  parcours?: ParcoursId;
+  /** Numéro affiché (ex. « A1 ») ; à défaut, l'id. */
+  code?: string;
   title: string;
   objective: string;
   bonus?: boolean;
@@ -117,4 +124,4 @@ export interface Lesson {
   fiche: Fiche;
 }
 
-export interface Module { id: number; title: string; short: string }
+export interface Module { id: number; title: string; short: string; parcours?: ParcoursId; /** Lettre affichée (Exploration) */ letter?: string }
