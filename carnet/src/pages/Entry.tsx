@@ -14,7 +14,7 @@ import {
   type Action, type State,
 } from '../lib/engine';
 import { bbs, chips, pct } from '../lib/format';
-import { replayOf, seatName, type Hand } from '../lib/hand';
+import { MAX_QUESTIONS, replayOf, seatName, toggleDecision, type Hand } from '../lib/hand';
 import { go } from '../lib/router';
 import { getHand, resizeTable, saveHand } from '../lib/store';
 
@@ -43,7 +43,7 @@ export function Entry({ id }: { id: string }) {
         {phase === 'play' && (
           <button className="btn sm" onClick={async () => {
             if (h.actions.length && !(await confirm({ title: 'Modifier la table ?', text: 'Changer les tapis ou les positions efface les actions déjà saisies.', ok: 'Modifier la table', danger: true }))) return;
-            update({ ...h, actions: [], decision: null, winners: [], complete: false });
+            update({ ...h, actions: [], decisions: [], winners: [], complete: false });
             setPhase('setup');
           }}><Icon name="edit" size={15} />Table</button>
         )}
@@ -130,14 +130,14 @@ function Play({ h, update }: { h: Hand; update: (h: Hand) => void }) {
       st = next;
     }
     const heroAt = list.findIndex(a => a.p === h.hero);
-    const decision = ask && heroAt >= 0 ? h.actions.length + heroAt : h.decision;
+    const decisions = ask && heroAt >= 0 ? toggleDecision(h.decisions, h.actions.length + heroAt) : h.decisions;
     if (ask && heroAt >= 0) setAsk(false);
-    update({ ...h, actions: [...h.actions, ...list], decision, complete: false });
+    update({ ...h, actions: [...h.actions, ...list], decisions, complete: false });
   };
   const undo = () => {
     if (!h.actions.length) return;
     const n = h.actions.length - 1;
-    update({ ...h, actions: h.actions.slice(0, n), decision: h.decision !== null && h.decision >= n ? null : h.decision, winners: [], complete: false });
+    update({ ...h, actions: h.actions.slice(0, n), decisions: h.decisions.filter(d => d < n), winners: [], complete: false });
   };
   // Toucher un siège : tous ceux qui parlent avant lui passent (ou checkent), jamais le héros.
   const foldTo = (j: number) => {
@@ -199,7 +199,8 @@ function ActionPanel({ h, s, ask, setAsk, onAction }: { h: Hand; s: State; ask: 
   const max = p.bet + p.stack;
   const [custom, setCustom] = useState<number | null>(null);
   const isHero = i === h.hero;
-  const decisionHere = h.decision === h.actions.length;
+  const asked = h.decisions.length;
+  const full = asked >= MAX_QUESTIONS;
   return (
     <section className={`card stack sm actpanel ${isHero ? 'hero' : ''}`}>
       <div className="row between">
@@ -236,9 +237,11 @@ function ActionPanel({ h, s, ask, setAsk, onAction }: { h: Hand; s: State; ask: 
       )}
       {isHero && (
         <label className="switch">
-          <input type="checkbox" checked={ask || decisionHere} onChange={e => setAsk(e.target.checked)} />
+          <input type="checkbox" checked={ask} disabled={full && !ask} onChange={e => setAsk(e.target.checked)} />
           <span className="track" />
-          <span className="switch-text">C'est ici que j'ai hésité<small>La main partagée s'arrêtera là pour demander « Et toi, tu fais quoi ? ».</small></span>
+          <span className="switch-text">C'est ici que j'ai hésité<small>{full
+            ? `Déjà ${MAX_QUESTIONS} questions dans cette main : c'est le maximum.`
+            : `La main partagée s'arrêtera là pour demander « Et toi, tu fais quoi ? ».${asked ? ` Déjà ${asked} question${asked > 1 ? 's' : ''} plus tôt dans la main : elles seront posées dans l'ordre.` : ''}`}</small></span>
         </label>
       )}
     </section>

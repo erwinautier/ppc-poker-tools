@@ -7,12 +7,12 @@ import { Chips, Icon, useAction, useConfirm, useToast } from '../components/ui';
 import { club } from '../lib/club';
 import { STREETS, positions, tell } from '../lib/engine';
 import { bbs, chips, dayLabel, timeLabel } from '../lib/format';
-import { actionText, ctxText, decisionState, heroCards, replayOf, shareable, type Hand } from '../lib/hand';
+import { MAX_QUESTIONS, actionText, ctxText, heroCards, replayOf, shareable, toggleDecision, type Hand } from '../lib/hand';
 import { go } from '../lib/router';
 import { useUser } from '../lib/session';
 import { clubLink } from '../lib/share';
 import { removeHand, saveHand, useCarnet } from '../lib/store';
-import { optionLabel, voteOptions } from '../lib/vote';
+import { optionLabel, questionsOf, voteOptions } from '../lib/vote';
 
 export function HandPage({ id }: { id: string }) {
   const { hands } = useCarnet();
@@ -55,6 +55,7 @@ export function HandPage({ id }: { id: string }) {
             <a className="btn sm" href={`#/noter/${h.id}`}><Icon name="pen" size={15} />Note et étiquettes</a>
           </div>
           {h.note && <section className="card"><span className="field-label">Ma note (privée)</span><p className="notetext">{h.note}</p></section>}
+          <QuestionsPanel h={h} />
           <SharePanel hand={shareable(h)} />
           <PublishPanel h={h} />
         </>
@@ -70,12 +71,32 @@ export function HandPage({ id }: { id: string }) {
   );
 }
 
+/** Les décisions du héros sur lesquelles on demande « Et toi, tu fais quoi ? ». */
+function QuestionsPanel({ h }: { h: Hand }) {
+  const r = replayOf(h);
+  const bb = h.ctx.blinds.bb;
+  const acts = h.actions.flatMap((a, i) => {
+    const s = r.states[i];
+    return a.p === h.hero && s && voteOptions(s, bb).length >= 2 ? [{ i, label: `${STREETS[s.street]} : ${actionText(tell(s, a))}` }] : [];
+  });
+  if (!acts.length) return null;
+  const full = h.decisions.length >= MAX_QUESTIONS;
+  return (
+    <section className="card stack sm">
+      <h2>Et toi, tu fais quoi ?</h2>
+      <p className="muted">Coche les décisions sur lesquelles tu veux l'avis des autres ({MAX_QUESTIONS} au plus). Le lien et le vote du club s'arrêtent à chacune, dans l'ordre, avant de montrer la suite.</p>
+      <Chips label="Questions" multi value={h.decisions} onChange={i => saveHand({ ...h, decisions: toggleDecision(h.decisions, i) })}
+        items={acts.map(x => ({ value: x.i, label: x.label, disabled: full && !h.decisions.includes(x.i) }))} />
+      {h.published && <p className="muted">Déjà publiée au club : là-bas, les questions restent celles du jour de la publication.</p>}
+    </section>
+  );
+}
+
 function PublishPanel({ h }: { h: Hand }) {
   const user = useUser();
   const [run, busy] = useAction();
   const [showName, setShowName] = useState(false);
-  const r = replayOf(h);
-  const decision = decisionState(h, r);
+  const qs = questionsOf(h);
 
   if (h.published) {
     return (
@@ -88,19 +109,16 @@ function PublishPanel({ h }: { h: Hand }) {
     );
   }
 
-  const heroActs = h.actions.flatMap((a, i) => (a.p === h.hero && r.states[i] ? [{ i, label: `${STREETS[r.states[i].street]} : ${actionText(tell(r.states[i], a))}` }] : []));
-  const options = decision ? voteOptions(decision, h.ctx.blinds.bb) : [];
-
   return (
     <section className="card stack sm">
       <h2>Soumettre au vote du club</h2>
       <p className="muted">Les adhérents choisissent ce qu'ils auraient fait parmi quelques réponses, avec au plus deux raisons. Pas de commentaire libre.</p>
-      {heroActs.length === 0 ? <p className="note">Tu n'as pris aucune décision dans cette main : rien à soumettre au vote.</p> : (
+      {!qs.length ? <p className="note">Coche d'abord au moins une décision dans « Et toi, tu fais quoi ? ».</p> : (
         <>
-          <span className="field-label">La décision à soumettre</span>
-          <Chips label="Décision" value={h.decision} onChange={i => saveHand({ ...h, decision: i })}
-            items={heroActs.map(x => ({ value: x.i, label: x.label }))} />
-          {options.length > 0 && <p className="muted">Réponses proposées : {options.map(optionLabel).join(' · ')}.</p>}
+          <span className="field-label">Réponses proposées</span>
+          <ul className="plain">
+            {qs.map(q => <li key={q.index} className="muted"><b>{STREETS[q.state.street]}</b> : {q.options.map(optionLabel).join(' · ')}</li>)}
+          </ul>
           <label className="switch">
             <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} />
             <span className="track" />
@@ -109,8 +127,8 @@ function PublishPanel({ h }: { h: Hand }) {
           {user === null ? (
             <a className="btn block" href="#/compte"><Icon name="user" />Se connecter pour publier</a>
           ) : (
-            <button className="btn primary block" disabled={!decision || busy || options.length < 2} onClick={() => run(async () => {
-              const id = await club.publish(shareable(h), options, showName);
+            <button className="btn primary block" disabled={busy} onClick={() => run(async () => {
+              const id = await club.publish({ ...shareable(h), decisions: qs.map(q => q.index) }, qs.map(q => q.options), showName);
               saveHand({ ...h, published: id });
               go(`#/club/${id}`);
             }, 'Main soumise au vote')}><Icon name="vote" />Publier au club</button>

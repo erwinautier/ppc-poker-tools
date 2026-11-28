@@ -31,8 +31,8 @@ export interface HandData {
   hero: number;
   actions: Action[];
   board: Card[];
-  /** Indice de l'action du héros soumise à la question « Et toi ? ». */
-  decision: number | null;
+  /** Indices des actions du héros soumises à « Et toi, tu fais quoi ? », dans l'ordre de la main. */
+  decisions: number[];
   /** Gagnants à l'abattage (vide si inconnu, ou main gagnée sans abattage). */
   winners: number[];
   tags: string[];
@@ -50,6 +50,8 @@ export interface Hand extends HandData {
 }
 
 export const TAGS = ['Hésitation', 'À revoir', 'Erreur ?', 'Bad beat', 'Cooler', 'Belle main'] as const;
+/** Questions « Et toi ? » par main, au plus (une par tour, en gros). */
+export const MAX_QUESTIONS = 4;
 
 export const heroCards = (h: HandData): Card[] => h.seats[h.hero]?.cards ?? [];
 export const replayOf = (h: HandData): Replay => replay(h.ctx.blinds, h.seats, h.actions);
@@ -125,12 +127,32 @@ export function involved(h: HandData): number[] {
   return [...set].sort((a, b) => a - b);
 }
 
-/** La main s'arrête-t-elle sur une décision du héros ? */
-export function decisionState(h: HandData, r: Replay = replayOf(h)): State | null {
-  if (h.decision === null) return null;
-  const s = r.states[h.decision];
-  if (!s || s.toAct !== h.hero || h.actions[h.decision]?.p !== h.hero) return null;
-  return s;
+export interface DecisionPoint {
+  /** Indice de l'action du héros. */
+  index: number;
+  /** La table juste avant qu'il parle. */
+  state: State;
+}
+
+/** Les décisions du héros où la main s'arrête pour demander « Et toi ? ». */
+export function decisionPoints(h: HandData, r: Replay = replayOf(h)): DecisionPoint[] {
+  return h.decisions.flatMap(index => {
+    const state = r.states[index];
+    return state && state.toAct === h.hero && h.actions[index]?.p === h.hero ? [{ index, state }] : [];
+  });
+}
+
+/** Ajoute ou retire une question ; renvoie la liste triée, sans dépasser MAX_QUESTIONS. */
+export function toggleDecision(list: number[], index: number): number[] {
+  if (list.includes(index)) return list.filter(x => x !== index);
+  return list.length >= MAX_QUESTIONS ? list : [...list, index].sort((a, b) => a - b);
+}
+
+/** Les mains d'avant les questions multiples n'avaient qu'une « decision ». */
+export function upgrade<T extends Partial<HandData>>(h: T & { decision?: unknown }): T & { decisions: number[] } {
+  if (Array.isArray(h.decisions)) return h as T & { decisions: number[] };
+  const { decision, ...rest } = h;
+  return { ...(rest as T), decisions: typeof decision === 'number' ? [decision] : [] };
 }
 
 // ── Données reçues (lien, base) : on vérifie tout ────────────────────────────
@@ -184,7 +206,9 @@ export function sanitize(x: unknown): HandData | null {
     }
   }
   const board = cards(o.board, 5, used);
-  const decision = num(o.decision, 0, actions.length - 1);
+  const asked = Array.isArray(o.decisions) ? o.decisions : [o.decision];
+  const decisions = [...new Set(asked.map(d => num(d, 0, actions.length - 1)).filter((d): d is number => d !== null))]
+    .sort((a, b) => a - b).slice(0, MAX_QUESTIONS);
   const winners = Array.isArray(o.winners) ? [...new Set(o.winners.map(w => num(w, 0, n - 1)).filter((w): w is number => w !== null))] : [];
   const tags = Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === 'string').slice(0, 8).map(t => t.slice(0, 30)) : [];
   const h: HandData = {
@@ -197,20 +221,20 @@ export function sanitize(x: unknown): HandData | null {
       blinds,
       table: n,
     },
-    seats, hero, actions, board, decision, winners, tags,
+    seats, hero, actions, board, decisions, winners, tags,
     complete: o.complete === true,
   };
   // Les actions refusées par le moteur ne sont pas gardées.
   const r = replayOf(h);
   if (r.error) h.actions = h.actions.slice(0, r.error.index);
-  if (h.decision !== null && !decisionState(h, r)) h.decision = null;
+  h.decisions = decisionPoints(h, r).map(d => d.index);
   return h;
 }
 
 /** La part partageable d'une main du carnet. */
 export function shareable(h: Hand): HandData {
-  const { v, date, ctx, seats, hero, actions, board, decision, winners, tags, complete } = h;
-  return { v, date, ctx: { kind: ctx.kind, name: ctx.name, level: ctx.level, blinds: ctx.blinds, table: ctx.table }, seats, hero, actions, board, decision, winners, tags, complete };
+  const { v, date, ctx, seats, hero, actions, board, decisions, winners, tags, complete } = h;
+  return { v, date, ctx: { kind: ctx.kind, name: ctx.name, level: ctx.level, blinds: ctx.blinds, table: ctx.table }, seats, hero, actions, board, decisions, winners, tags, complete };
 }
 
 export const heroLine = (h: HandData) => `${positions(h.seats.length)[h.hero]} · ${cardsText(heroCards(h)) || 'cartes non notées'}`;

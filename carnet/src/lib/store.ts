@@ -4,7 +4,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { positions, type Seat } from './engine';
-import type { Ctx, Hand } from './hand';
+import { upgrade, type Ctx, type Hand } from './hand';
 
 const KEY = 'ppc-carnet-v1';
 
@@ -25,7 +25,7 @@ function load(): Carnet {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<Carnet> | null;
     if (raw && Array.isArray(raw.hands)) {
-      return { hands: raw.hands, ctx: raw.ctx ?? DEFAULT_CTX, recent: Array.isArray(raw.recent) ? raw.recent : [] };
+      return { hands: raw.hands.map(h => upgrade(h)), ctx: raw.ctx ?? DEFAULT_CTX, recent: Array.isArray(raw.recent) ? raw.recent : [] };
     }
   } catch { /* stockage illisible ou bloqué : carnet vide */ }
   return { hands: [], ctx: DEFAULT_CTX, recent: [] };
@@ -81,7 +81,7 @@ export function blankHand(ctx: Ctx, stack: number, heroPos?: string): Hand {
   const seats: Seat[] = pos.map(() => ({ stack }));
   return {
     v: 1, id: newId(), date: Date.now(), updated: Date.now(),
-    ctx: { ...ctx }, seats, hero, actions: [], board: [], decision: null, winners: [], tags: [],
+    ctx: { ...ctx }, seats, hero, actions: [], board: [], decisions: [], winners: [], tags: [],
     complete: false, note: '',
   };
 }
@@ -96,7 +96,7 @@ export function resizeTable(h: Hand, n: number): Hand {
   if (hero < 0) hero = Math.max(0, pos.indexOf('BTN'));
   const seats: Seat[] = pos.map((_, i) => ({ stack: h.seats[i]?.stack ?? stack }));
   seats[hero] = { stack, ...(cards ? { cards } : {}) };
-  return { ...h, seats, hero, actions: [], decision: null, winners: [], ctx: { ...h.ctx, table: n } };
+  return { ...h, seats, hero, actions: [], decisions: [], winners: [], ctx: { ...h.ctx, table: n } };
 }
 
 /** Le dernier tapis noté : point de départ de la main suivante. */

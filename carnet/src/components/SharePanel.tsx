@@ -1,7 +1,7 @@
 /** Envoyer une main : WhatsApp, texte, lien (la main est dans le lien), image. */
 import { useState } from 'react';
 import { canShareFiles, copyText, download, shareNative } from '../lib/device';
-import { decisionState, type HandData } from '../lib/hand';
+import { decisionPoints, type HandData } from '../lib/hand';
 import { handImage } from '../lib/image';
 import { encodeHand, handLink, handText, whatsappUrl } from '../lib/share';
 import { Icon, useAction, useToast } from './ui';
@@ -9,7 +9,8 @@ import { Icon, useAction, useToast } from './ui';
 export function SharePanel({ hand, link: fixedLink, title = 'Partager la main' }: { hand: HandData; link?: string; title?: string }) {
   const toast = useToast();
   const [run, busy] = useAction();
-  const question = !!decisionState(hand);
+  const asked = decisionPoints(hand).length;
+  const question = asked > 0;
   const [all, setAll] = useState(!question);
   const link = async () => fixedLink ?? handLink(await encodeHand({ ...hand }));
   const text = async () => handText(hand, { all, link: await link() });
@@ -21,7 +22,9 @@ export function SharePanel({ hand, link: fixedLink, title = 'Partager la main' }
         <label className="switch">
           <input type="checkbox" checked={!all} onChange={e => setAll(!e.target.checked)} />
           <span className="track" />
-          <span className="switch-text">S'arrêter à la décision<small>Le texte et l'image posent la question « Et toi, tu fais quoi ? » sans dévoiler la suite. Le lien la montre après réponse.</small></span>
+          <span className="switch-text">{asked > 1 ? 'S\'arrêter à la première question' : 'S\'arrêter à la question'}<small>{asked > 1
+            ? `Le texte et l'image posent la première question sans dévoiler la suite. Le lien pose les ${asked} questions l'une après l'autre.`
+            : 'Le texte et l\'image posent la question « Et toi, tu fais quoi ? » sans dévoiler la suite. Le lien la montre après réponse.'}</small></span>
         </label>
       )}
       <div className="sharegrid">

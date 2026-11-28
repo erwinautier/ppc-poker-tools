@@ -5,7 +5,7 @@
 import { SUIT_SYMBOL, rankLabel, rankOf, suitOf, type Card } from './cards';
 import { BOARD_AT, STREETS, positions, potOf } from './engine';
 import { bbs, chips, pct } from './format';
-import { ctxText, decisionState, heroCards, lineText, replayOf, story, type HandData } from './hand';
+import { ctxText, decisionPoints, heroCards, lineText, replayOf, story, type HandData } from './hand';
 
 const W = 1080;
 const PAD = 64;
@@ -51,8 +51,9 @@ export async function handImage(h: HandData, all: boolean): Promise<Blob> {
     felt: css('--felt', '#15395C'), edge: css('--felt-edge', '#8C7442'),
   };
   const r = replayOf(h);
-  const decision = decisionState(h, r);
-  const stop = decision && !all ? h.decision! : h.actions.length;
+  const first = all ? undefined : decisionPoints(h, r)[0];
+  const decision = first?.state;
+  const stop = first ? first.index : h.actions.length;
   const lines = story(h, r, stop);
   const bb = h.ctx.blinds.bb;
   const pos = positions(h.seats.length);
@@ -81,7 +82,7 @@ export async function handImage(h: HandData, all: boolean): Promise<Blob> {
       ctx.beginPath(); ctx.roundRect(PAD, y, W - 2 * PAD, feltH, feltH / 2); ctx.fill(); ctx.stroke();
       const hc = heroCards(h);
       hc.forEach((c, i) => card(ctx, c, PAD + 70 + i * 120, y + 50, 110));
-      const visible = decision && !all ? h.board.slice(0, BOARD_AT[decision.street]) : h.board;
+      const visible = decision ? h.board.slice(0, BOARD_AT[decision.street]) : h.board;
       visible.forEach((c, i) => card(ctx, c, PAD + 380 + i * 104, y + 70, 92));
       ctx.fillStyle = colors.gold; ctx.font = '700 30px Montserrat, sans-serif';
       ctx.fillText(hc.length ? `${pos[h.hero]} (héros)` : '', PAD + 70, y + feltH - 34);
@@ -94,7 +95,7 @@ export async function handImage(h: HandData, all: boolean): Promise<Blob> {
       text(`${STREETS[line.street].toUpperCase()}${board}`, 26, colors.gold, 800);
       text(lineText(h, line), 30, colors.text, 500);
     }
-    if (decision && !all) {
+    if (decision) {
       const call = Math.min(decision.current - decision.ps[h.hero].bet, decision.ps[h.hero].stack);
       y += 30;
       text('Et toi, tu fais quoi ?', 46, colors.gold, 800);

@@ -4,6 +4,7 @@
  */
 import { chips } from './format';
 import { canReopen, chipUnit, potOf, type Action, type Kind, type State } from './engine';
+import { decisionPoints, replayOf, type HandData } from './hand';
 
 export interface VoteOption { k: Kind; to?: number; allin?: boolean }
 
@@ -77,6 +78,28 @@ export function matchOption(options: VoteOption[], prev: State, a: Action): numb
     if (g < gap) { gap = g; best = j; }
   });
   return best;
+}
+
+export interface Question {
+  /** Rang de la question dans la main (celui des votes au club). */
+  step: number;
+  /** Indice de l'action du héros. */
+  index: number;
+  /** La table au moment de la question. */
+  state: State;
+  options: VoteOption[];
+  /** La réponse la plus proche de ce que le héros a fait. */
+  did: number;
+}
+
+/** Les questions d'une main, avec leurs réponses ; « options » : celles enregistrées au club. */
+export function questionsOf(h: HandData, options?: VoteOption[][]): Question[] {
+  const r = replayOf(h);
+  return decisionPoints(h, r).flatMap(({ index, state }, k) => {
+    const opts = options ? options[k] ?? [] : voteOptions(state, h.ctx.blinds.bb);
+    if (opts.length < 2) return [];
+    return [{ step: k, index, state, options: opts, did: matchOption(opts, state, h.actions[index]) }];
+  });
 }
 
 /** Options reçues de la base : on ne garde que ce qui a du sens. */

@@ -5,7 +5,7 @@
 import { cardsText } from './cards';
 import { bbs, chips, pct } from './format';
 import { BOARD_AT, STREETS, positions, potOf } from './engine';
-import { ctxText, decisionState, heroCards, involved, lineText, replayOf, sanitize, seatName, story, type HandData } from './hand';
+import { ctxText, decisionPoints, heroCards, involved, lineText, replayOf, sanitize, seatName, story, type HandData } from './hand';
 
 // ── Encodage du lien ─────────────────────────────────────────────────────────
 
@@ -67,8 +67,10 @@ export function handText(h: HandData, o: TextOptions): string {
   const bb = h.ctx.blinds.bb;
   const n = h.seats.length;
   const pos = positions(n);
-  const decision = decisionState(h, r);
-  const stop = decision && !o.all ? h.decision! : h.actions.length;
+  // Le texte ne peut poser que la première question : les suivantes sont dans le lien.
+  const points = decisionPoints(h, r);
+  const first = o.all ? undefined : points[0];
+  const stop = first ? first.index : h.actions.length;
   const out: string[] = [];
 
   out.push('🃏 *Carnet de mains PPC*');
@@ -88,8 +90,8 @@ export function handText(h: HandData, o: TextOptions): string {
     out.push(`*${STREETS[line.street]}*${board}${pot} : ${lineText(h, line)}`);
   }
 
-  if (decision && !o.all) {
-    const s = decision;
+  if (first) {
+    const s = first.state;
     const call = Math.min(s.current - s.ps[h.hero].bet, s.ps[h.hero].stack);
     // Tour qui commence à la décision : on montre le board qui vient d'arriver.
     if (!lines.length || lines.at(-1)!.street !== s.street) {
@@ -112,7 +114,12 @@ export function handText(h: HandData, o: TextOptions): string {
     }
   }
   if (h.tags.length) out.push(`#${h.tags.map(t => t.replace(/[^\p{L}\p{N}]+/gu, '')).filter(Boolean).join(' #')}`);
-  if (o.link) { out.push(''); out.push(`${decision && !o.all ? 'La suite et le rejoueur' : 'Le rejoueur'} : ${o.link}`); }
+  if (o.link) {
+    const more = first ? points.length - 1 : 0;
+    const label = !first ? 'Le rejoueur' : more ? `La suite, ${more > 1 ? `${more} autres questions` : 'une autre question'} et le rejoueur` : 'La suite et le rejoueur';
+    out.push('');
+    out.push(`${label} : ${o.link}`);
+  }
   return out.join('\n');
 }
 

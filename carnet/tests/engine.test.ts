@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { apply, boardMissing, positions, potOdds, potOf, replay, sizes, start, type Action, type Blinds, type Seat, type State } from '../src/lib/engine';
-import { lineText, sanitize, story, type HandData } from '../src/lib/hand';
-import { matchOption, voteOptions } from '../src/lib/vote';
+import { MAX_QUESTIONS, lineText, sanitize, story, toggleDecision, upgrade, type HandData } from '../src/lib/hand';
+import { matchOption, questionsOf, voteOptions } from '../src/lib/vote';
+import { readPosts } from '../src/lib/club';
 import { clubLevel, nextLevel, prevLevel } from '../src/lib/levels';
 import { decodeHand, encodeHand, handText } from '../src/lib/share';
 
@@ -130,7 +131,7 @@ const sample = (): HandData => ({
   ctx: { kind: 'club', name: 'Tournoi d\'hiver', level: 7, blinds: B, table: 9 },
   seats: seatsEx(), hero: 6,
   actions: [...PRE, ...FLOP, { p: 0, k: 'bet', to: 16500 }, { p: 6, k: 'call' }],
-  board: [44, 21, 2, 31, 12], decision: 14, winners: [6], tags: ['Hésitation'], complete: true,
+  board: [44, 21, 2, 31, 12], decisions: [14], winners: [6], tags: ['Hésitation'], complete: true,
 });
 
 describe('récit et partage', () => {
@@ -159,10 +160,61 @@ describe('récit et partage', () => {
     expect(await decodeHand(code)).toEqual(h);
     expect(await decodeHand('zpas-du-tout')).toBeNull();
     expect(sanitize({ seats: [{ stack: 1 }] })).toBeNull();
-    const bad = sanitize({ ...h, actions: [...h.actions.slice(0, 3), { p: 8, k: 'check' }], decision: 12, board: [1, 1, 2] });
+    const bad = sanitize({ ...h, actions: [...h.actions.slice(0, 3), { p: 8, k: 'check' }], decisions: [12], board: [1, 1, 2] });
     expect(bad!.actions).toHaveLength(3);
-    expect(bad!.decision).toBeNull();
+    expect(bad!.decisions).toEqual([]);
     expect(bad!.board).toEqual([1, 2]);
+  });
+});
+
+describe('plusieurs questions', () => {
+  // Flop : le héros suit 2 500 (action 11) ; turn : il suit le tapis (action 14).
+  const two = (): HandData => ({ ...sample(), decisions: [11, 14] });
+
+  it('posées dans l\'ordre, chacune avec ses réponses et ce qu\'a fait le joueur', () => {
+    const qs = questionsOf(two());
+    expect(qs.map(q => [q.step, q.index, q.state.street])).toEqual([[0, 11, 1], [1, 14, 2]]);
+    expect(qs.map(q => q.options[q.did].k)).toEqual(['call', 'call']);
+  });
+
+  it('liens d\'avant (une seule « decision ») et données douteuses', () => {
+    const { decisions: _, ...old } = sample();
+    expect(sanitize({ ...old, decision: 14 })!.decisions).toEqual([14]);
+    expect(upgrade({ ...old, decision: 14 })).not.toHaveProperty('decision');
+    expect(upgrade({ ...old, decision: 14 }).decisions).toEqual([14]);
+    expect(upgrade({ ...old }).decisions).toEqual([]);
+    // Pas le héros (12), en double, hors main : écartés ; l'ordre de la main est rétabli.
+    expect(sanitize({ ...old, decisions: [14, 12, 11, 11, 99] })!.decisions).toEqual([11, 14]);
+  });
+
+  it(`${MAX_QUESTIONS} au plus`, () => {
+    let l: number[] = [];
+    for (const i of [9, 3, 7, 1, 5]) l = toggleDecision(l, i);
+    expect(l).toEqual([1, 3, 7, 9]);
+    expect(toggleDecision(l, 3)).toEqual([1, 7, 9]);
+  });
+
+  it('le texte WhatsApp pose la première, le lien les autres', () => {
+    const t = handText(two(), { all: false, link: 'https://x/#/voir/abc' });
+    expect(t).toContain('UTG mise 2 500');
+    expect(t).not.toContain('Turn');
+    expect(t).toContain('Il faut payer 2 500');
+    expect(t).toContain('La suite, une autre question et le rejoueur : https://x/#/voir/abc');
+  });
+
+  it('mains du club : avant et après le script 007', () => {
+    const h = sample();
+    const opts = [{ k: 'fold' }, { k: 'call', to: 16500 }];
+    const [old] = readPosts([{ id: 'a', hand: h, options: opts, my_vote: 1, my_reasons: [2], results: { total: 3, counts: [1, 2], reasons: [] }, votes: 3 }]);
+    expect(old.steps).toEqual([opts]);
+    expect(old.my_votes).toEqual([{ choice: 1, reasons: [2] }]);
+    expect(old.results[0]!.counts).toEqual([1, 2]);
+    const [now] = readPosts([{ id: 'b', hand: two(), options: [[{ k: 'fold' }, { k: 'call' }], opts], my_votes: [{ choice: 0, reasons: [] }, null], results: [{ total: 1, counts: [1, 0], reasons: [] }, null], votes: 1 }]);
+    expect(now.steps).toHaveLength(2);
+    expect(now.my_votes).toEqual([{ choice: 0, reasons: [] }, null]);
+    expect(now.results[1]).toBeNull();
+    // Questions et réponses qui ne correspondent pas : la main est écartée.
+    expect(readPosts([{ id: 'c', hand: two(), options: [opts] }])).toEqual([]);
   });
 });
 

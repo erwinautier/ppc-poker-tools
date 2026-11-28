@@ -83,6 +83,18 @@ Sans ce script, la page affiche ses questions par défaut (`rejoindre/faq.json`)
 de Le Club les montre sans pouvoir les enregistrer. Si tu relances `001_club.sql`, relance
 aussi `006_club_join_page.sql`.
 
+## 2 septies. Plusieurs questions dans une main du Carnet
+
+Après `005_carnet.sql`, exécute `supabase/007_carnet_questions.sql` (une fois). Une main
+soumise au vote peut alors poser jusqu'à quatre questions « Et toi, tu fais quoi ? » (au
+flop, puis à la turn…) : on y répond dans l'ordre, chacune a ses propres totaux. Les mains
+déjà publiées deviennent des mains à une question et gardent leurs votes. Le bilan final
+doit afficher `fonctions_carnet = 5` et `votes_par_question = 1`.
+
+Sans ce script, l'onglet **Club** du carnet montre les mains mais refuse les votes et les
+publications (« Base à mettre à jour »). Une fois ce script passé, ne relance plus
+`005_carnet.sql` : il s'arrêterait sur une erreur, sans rien changer.
+
 ## 3. Autoriser le lien « mot de passe oublié »
 
 Dans **Authentication > URL Configuration > Redirect URLs**, ajoute l'adresse

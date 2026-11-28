@@ -1,5 +1,5 @@
 /** Rejouer une main pas à pas : table, commandes, et le déroulé écrit tour par tour. */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { BOARD_AT, STREETS, potOdds, potOf, tell, toCall, type State } from '../lib/engine';
 import { chips, pct } from '../lib/format';
 import { actionText, lineText, replayOf, seatName, story, type HandData } from '../lib/hand';
@@ -16,7 +16,8 @@ export function outcome(hand: HandData, s: State): string | null {
 
 export function Replayer({ hand, limit, startAt = 'start', footer }: {
   hand: HandData;
-  /** Dernière étape montrée (la décision, tant que la suite est cachée). */
+  /** Dernière étape montrée (la question en cours, tant que la suite est cachée). Quand elle recule
+   *  après une réponse, le rejoueur avance seul jusqu'à la question suivante ou la fin. */
   limit?: number;
   startAt?: 'start' | 'end';
   footer?: ReactNode;
@@ -26,7 +27,14 @@ export function Replayer({ hand, limit, startAt = 'start', footer }: {
   const max = Math.min(limit ?? end, end);
   const [f, setF] = useState(startAt === 'end' ? max : 0);
   const [playing, setPlaying] = useState(false);
-  useEffect(() => { setF(x => Math.min(x, max)); }, [max]);
+  const shown = useRef({ max, f });
+  shown.current.f = f;
+  useEffect(() => {
+    const before = shown.current;
+    if (max > before.max && before.f === before.max) setPlaying(true);
+    else setF(x => Math.min(x, max));
+    shown.current = { max, f: Math.min(before.f, max) };
+  }, [max]);
   useEffect(() => {
     if (!playing) return;
     if (f >= max) { setPlaying(false); return; }

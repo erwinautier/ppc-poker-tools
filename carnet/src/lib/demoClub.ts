@@ -5,6 +5,8 @@ import type { HandData } from './hand';
 import type { ClubTournament } from './levels';
 import { voteOptions, type VoteOption } from './vote';
 
+interface DemoVote { voter: string; step: number; choice: number; reasons: number[] }
+
 export type DemoRole = 'member' | 'staff' | 'anon';
 
 interface DemoPost {
@@ -12,23 +14,27 @@ interface DemoPost {
   mine: boolean;
   author_name: string | null;
   hand: HandData;
-  options: VoteOption[];
+  steps: VoteOption[][];
   hidden: boolean;
   created_at: string;
-  votes: { voter: string; choice: number; reasons: number[] }[];
+  votes: DemoVote[];
 }
 interface DemoState { role: DemoRole; posts: DemoPost[] }
 
-const KEY = 'ppc-carnet-demo-v1';
+const KEY = 'ppc-carnet-demo-v2';
 const ME = 'moi';
 const f = (p: number): Action => ({ p, k: 'fold' });
 
-function post(id: string, mine: boolean, author: string | null, hand: HandData, ago: number, counts: number[], reasons: number[][]): DemoPost {
-  const s = replay(hand.ctx.blinds, hand.seats, hand.actions).states[hand.decision!];
-  const options = voteOptions(s, hand.ctx.blinds.bb);
-  const votes: DemoPost['votes'] = [];
-  counts.forEach((n, choice) => { for (let i = 0; i < n; i++) votes.push({ voter: `${id}-${choice}-${i}`, choice, reasons: reasons[(choice + i) % reasons.length] ?? [] }); });
-  return { id, mine, author_name: author, hand, options, hidden: false, created_at: new Date(Date.now() - ago * 3600_000).toISOString(), votes };
+/** counts : votes par réponse, question par question ; les mêmes votants d'une question à l'autre. */
+function post(id: string, mine: boolean, author: string | null, hand: HandData, ago: number, counts: number[][], reasons: number[][]): DemoPost {
+  const states = replay(hand.ctx.blinds, hand.seats, hand.actions).states;
+  const steps = hand.decisions.map(d => voteOptions(states[d], hand.ctx.blinds.bb));
+  const votes: DemoVote[] = [];
+  counts.forEach((list, step) => {
+    let voter = 0;
+    list.forEach((n, choice) => { for (let i = 0; i < n; i++) votes.push({ voter: `${id}-${voter++}`, step, choice, reasons: reasons[(choice + i + step) % reasons.length] ?? [] }); });
+  });
+  return { id, mine, author_name: author, hand, steps, hidden: false, created_at: new Date(Date.now() - ago * 3600_000).toISOString(), votes };
 }
 
 function seed(): DemoState {
@@ -41,7 +47,7 @@ function seed(): DemoState {
     actions: [{ p: 0, k: 'raise', to: 1500 }, f(1), f(2), f(3), f(4), f(5), { p: 6, k: 'call' }, f(7), { p: 8, k: 'call' },
       { p: 8, k: 'check' }, { p: 0, k: 'bet', to: 2500 }, { p: 6, k: 'call' }, f(8),
       { p: 0, k: 'bet', to: 16500 }, { p: 6, k: 'call' }],
-    board: [45, 23, 2, 28, 9], decision: 14, winners: [0],
+    board: [45, 23, 2, 28, 9], decisions: [14], winners: [0],
   };
   const squeeze: HandData = {
     v: 1, date: day - 3600_000, complete: true, tags: ['À revoir'],
@@ -49,7 +55,7 @@ function seed(): DemoState {
     seats: [{ stack: 15000 }, { stack: 15000 }, { stack: 15000, cards: [51, 44] }, { stack: 15000 }, { stack: 6800, cards: [28, 29] }, { stack: 15000 }],
     hero: 4,
     actions: [f(0), f(1), { p: 2, k: 'raise', to: 900 }, f(3), { p: 4, k: 'raise', to: 6800 }, f(5), { p: 2, k: 'call' }],
-    board: [43, 26, 4, 37, 15], decision: 4, winners: [4],
+    board: [43, 26, 4, 37, 15], decisions: [4], winners: [4],
   };
   const river: HandData = {
     v: 1, date: day - 7 * 86400_000, complete: true, tags: ['Hésitation'],
@@ -60,14 +66,14 @@ function seed(): DemoState {
       { p: 8, k: 'check' }, { p: 5, k: 'bet', to: 4000 }, { p: 8, k: 'call' },
       { p: 8, k: 'check' }, { p: 5, k: 'check' },
       { p: 8, k: 'check' }, { p: 5, k: 'bet', to: 20000 }, { p: 8, k: 'call' }],
-    board: [39, 25, 10, 0, 30], decision: 16, winners: [5],
+    board: [39, 25, 10, 0, 30], decisions: [11, 16], winners: [5],
   };
   return {
     role: 'member',
     posts: [
-      post('demo-turn', false, 'Camille', turnShove, 5, [4, 9], [[0], [0, 2], [1], [6], []]),
-      post('demo-squeeze', true, null, squeeze, 20, [2, 1, 0, 8], [[6], [2, 6], [0], [5]]),
-      post('demo-river', false, null, river, 150, [3, 5, 1], [[1], [0], [0, 7], [4]]),
+      post('demo-turn', false, 'Camille', turnShove, 5, [[4, 9]], [[0], [0, 2], [1], [6], []]),
+      post('demo-squeeze', true, null, squeeze, 20, [[2, 1, 0, 8]], [[6], [2, 6], [0], [5]]),
+      post('demo-river', false, null, river, 150, [[1, 6, 1, 1], [3, 5, 1]], [[1], [0], [0, 7], [4], [2]]),
     ],
   };
 }
@@ -92,17 +98,22 @@ export function demoClub(): DemoClub {
   const wait = () => new Promise(r => setTimeout(r, 120));
 
   function view(p: DemoPost): Post {
-    const mine = p.votes.find(v => v.voter === ME);
-    const n = p.options.length;
-    const show = p.mine || !!mine || staff();
+    const my_votes = p.steps.map((_, k) => {
+      const v = p.votes.find(x => x.voter === ME && x.step === k);
+      return v ? { choice: v.choice, reasons: v.reasons } : null;
+    });
+    const results = p.steps.map((options, k) => {
+      if (!p.mine && !my_votes[k] && !staff()) return null;
+      const votes = p.votes.filter(v => v.step === k);
+      return {
+        total: votes.length,
+        counts: options.map((_, c) => votes.filter(v => v.choice === c).length),
+        reasons: options.map((_, c) => Array.from({ length: 8 }, (_, r) => votes.filter(v => v.choice === c && v.reasons.includes(r)).length)),
+      };
+    });
     return {
-      id: p.id, author_name: p.author_name, mine: p.mine, hand: p.hand, options: p.options, hidden: p.hidden,
-      created_at: p.created_at, votes: p.votes.length, my_vote: mine?.choice ?? null, my_reasons: mine?.reasons ?? [],
-      results: show ? {
-        total: p.votes.length,
-        counts: Array.from({ length: n }, (_, c) => p.votes.filter(v => v.choice === c).length),
-        reasons: Array.from({ length: n }, (_, c) => Array.from({ length: 8 }, (_, r) => p.votes.filter(v => v.choice === c && v.reasons.includes(r)).length)),
-      } : null,
+      id: p.id, author_name: p.author_name, mine: p.mine, hand: p.hand, steps: p.steps, hidden: p.hidden,
+      created_at: p.created_at, votes: new Set(p.votes.map(v => v.voter)).size, my_votes, results,
     };
   }
   const find = (id: string) => {
@@ -139,18 +150,19 @@ export function demoClub(): DemoClub {
       const list = state.posts.filter(p => (!id || p.id === id) && (!p.hidden || p.mine || staff()));
       return { member: true, staff: staff(), pending: false, posts: list.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(view) };
     },
-    async publish(hand, options) {
+    async publish(hand, steps) {
       await wait(); needMember();
       const id = `demo-${Date.now().toString(36)}`;
-      state.posts.push({ id, mine: true, author_name: null, hand, options, hidden: false, created_at: new Date().toISOString(), votes: [] });
+      state.posts.push({ id, mine: true, author_name: null, hand, steps, hidden: false, created_at: new Date().toISOString(), votes: [] });
       save();
       return id;
     },
-    async vote(id, choice, reasons) {
+    async vote(id, step, choice, reasons) {
       await wait(); needMember();
       const p = find(id);
       if (p.mine) throw new Error('C\'est ta main : tu vois les votes sans voter.');
-      p.votes = [...p.votes.filter(v => v.voter !== ME), { voter: ME, choice, reasons }];
+      if (!p.steps[step]?.[choice]) throw new Error('Réponse inconnue.');
+      p.votes = [...p.votes.filter(v => v.voter !== ME || v.step !== step), { voter: ME, step, choice, reasons }];
       save();
     },
     async remove(id) {
